@@ -13,7 +13,9 @@ export type CampaignAudience =
   | "active_members"
   | "expired_members"
   | "enquiries"
-  | "everyone";
+  | "everyone"
+  | "renewal_due"
+  | "dormant";
 
 export const TRIGGERS: {
   value: WorkflowTrigger;
@@ -43,7 +45,7 @@ export const TRIGGERS: {
     description:
       "Sent around the day a membership ends. Skipped if the member has already renewed.",
     hasOffset: true,
-    placeholders: ["name", "first_name", "gym", "service", "expiry_date"],
+    placeholders: ["name", "first_name", "gym", "service", "expiry_date", "offer"],
   },
   {
     value: "birthday",
@@ -70,6 +72,8 @@ export const TRIGGERS: {
 
 export const AUDIENCES: { value: CampaignAudience; label: string }[] = [
   { value: "active_members", label: "Active members" },
+  { value: "renewal_due", label: "Pending renewal (ending soon or ended in the last 30 days)" },
+  { value: "dormant", label: "Dormant members (paying but not coming for 7+ days)" },
   { value: "expired_members", label: "Members without an active membership" },
   { value: "all_members", label: "All members" },
   { value: "enquiries", label: "Enquiries (not yet members)" },
@@ -77,6 +81,8 @@ export const AUDIENCES: { value: CampaignAudience; label: string }[] = [
 ];
 
 export const CAMPAIGN_PLACEHOLDERS = ["name", "first_name", "gym"];
+// Extra tags when an offer is about a particular package.
+export const PACKAGE_PLACEHOLDERS = ["package", "price", "offer_price", "discount", "valid_till"];
 
 export function describeOffset(offsetDays: number): string {
   if (offsetDays === 0) return "on the day";
@@ -88,7 +94,8 @@ export function renderTemplate(
   template: string,
   values: Record<string, string | undefined | null>
 ): string {
-  return template.replace(/\{(\w+)\}/g, (match, key) =>
-    key in values ? values[key] ?? "" : match
-  );
+  return template
+    .replace(/\{(\w+)\}/g, (match, key) => (key in values ? values[key] ?? "" : match))
+    // An empty tag such as {offer} must not leave a double space behind.
+    .replace(/[ \t]{2,}/g, " ");
 }

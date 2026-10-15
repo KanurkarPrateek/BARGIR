@@ -1,4 +1,5 @@
 'use client'
+import { SendWhatsappButton } from '@/components/custom/send-whatsapp-button'
 import { useGymName } from '@/hooks/use-gym-name'
 import { GetEnquiryByFollowupDate } from '@/action/enquiries.action'
 import { GetMembersWithDOB } from '@/action/member.action'
@@ -68,11 +69,7 @@ const page = (props: Props) => {
                     SelectedMember &&
                     <CardContent className='space-y-4'>
                         <p>{message}</p>
-                        <Link className='text-primary mt-4' href={`https://api.whatsapp.com/send?phone=91${SelectedMember?.phone}&text=${message}`} target='_blank'>
-                            <Button>
-                                Send
-                            </Button>
-                        </Link>
+                        <SendWhatsappButton key={message} name={SelectedMember.name} phone={SelectedMember.phone} message={message} label='Send on WhatsApp' />
                     </CardContent>
                 }
 

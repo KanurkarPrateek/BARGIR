@@ -7,6 +7,8 @@ type Props = {
     value: string
     onChange: (value: string) => void
     placeholders: string[]
+    // Real values to preview with (e.g. the chosen package), over the samples.
+    sample?: Record<string, string>
 }
 
 // Sample values so admins see what a real person would receive.
@@ -21,9 +23,15 @@ const SAMPLE: Record<string, string> = {
     paid: '₹1,000',
     due: '₹500',
     invoice_link: 'https://yourgym.app/invoices/…',
+    package: 'Quarterly',
+    price: '₹3,000',
+    offer_price: '₹2,700',
+    discount: '10% off',
+    valid_till: '31-10-2026',
+    offer: 'Renew now at ₹900 (10% off till 31-10-2026).',
 }
 
-const TemplateEditor = ({ value, onChange, placeholders }: Props) => {
+const TemplateEditor = ({ value, onChange, placeholders, sample }: Props) => {
     const textarea = useRef<HTMLTextAreaElement>(null)
 
     const insert = (placeholder: string) => {
@@ -66,7 +74,7 @@ const TemplateEditor = ({ value, onChange, placeholders }: Props) => {
                 <div className='space-y-1'>
                     <p className='text-muted-foreground text-xs'>Preview</p>
                     <div className='bg-muted rounded-md px-3 py-2 text-sm whitespace-pre-wrap'>
-                        {renderTemplate(value, SAMPLE)}
+                        {renderTemplate(value, { ...SAMPLE, ...sample })}
                     </div>
                 </div>
             )}

@@ -6,7 +6,10 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
-import { AUDIENCES, CAMPAIGN_PLACEHOLDERS, CampaignAudience } from '@/lib/whatsapp/constants'
+import { AUDIENCES, CAMPAIGN_PLACEHOLDERS, CampaignAudience, PACKAGE_PLACEHOLDERS } from '@/lib/whatsapp/constants'
+import { GetAllServices, ServiceResponse } from '@/action/service.action'
+import { activeOffer, offerValues } from '@/lib/offers'
+import { useSearchParams } from 'next/navigation'
 import { format } from 'date-fns'
 import React, { useEffect, useState } from 'react'
 import { toast } from 'sonner'
@@ -16,13 +19,36 @@ const audienceLabel = (value: CampaignAudience) => AUDIENCES.find((a) => a.value
 
 const OffersTab = () => {
     const [title, setTitle] = useState('')
+    const params = useSearchParams()
     const [template, setTemplate] = useState('')
+    const [packages, setPackages] = useState<ServiceResponse[]>([])
+    const [packageId, setPackageId] = useState<string>('none')
     const [audience, setAudience] = useState<CampaignAudience>('active_members')
     const [audienceSize, setAudienceSize] = useState<number | null>(null)
     const [campaigns, setCampaigns] = useState<CampaignResponse[]>([])
     const [sending, setSending] = useState(false)
 
     const loadCampaigns = async () => setCampaigns(await GetCampaigns())
+
+    // Picking a package fills in a ready offer message; it can still be edited.
+    const choosePackage = (id: string, list = packages) => {
+        setPackageId(id)
+        const pkg = list.find((p) => p.id === id)
+        if (!pkg) return
+        const offer = activeOffer(pkg)
+        setTitle(`${pkg.name} offer`)
+        setTemplate(offer
+            ? `Hi {first_name}! 🎉 Special offer at {gym}: {package} for just {offer_price} instead of {price} ({discount})${offer.till ? '. Valid till {valid_till}' : ''}. Reply here to grab it!`
+            : `Hi {first_name}! Join {gym} with our {package} plan at {price}. Reply here to know more!`)
+    }
+
+    useEffect(() => {
+        GetAllServices().then((list) => {
+            setPackages(list)
+            const fromLink = params.get('package')
+            if (fromLink) choosePackage(fromLink, list)
+        })
+    }, [])
 
     useEffect(() => {
         loadCampaigns()
@@ -40,7 +66,7 @@ const OffersTab = () => {
         if (!confirm(`Send this offer on WhatsApp to ${audienceSize} people?`)) return
         setSending(true)
         try {
-            const queued = await call(SendCampaign({ title, template, audience }))
+            const queued = await call(SendCampaign({ title, template, audience, service_id: packageId === 'none' ? null : packageId }))
             toast.success(`Offer queued for ${queued} people`)
             setTitle('')
             setTemplate('')
@@ -59,6 +85,19 @@ const OffersTab = () => {
                     <Input placeholder='e.g. Diwali offer' value={title} onChange={(e) => setTitle(e.target.value)} />
                 </div>
                 <div className='space-y-2'>
+                    <Label>About a package <span className='text-muted-foreground font-normal'>(optional)</span></Label>
+                    <Select value={packageId} onValueChange={choosePackage}>
+                        <SelectTrigger className='w-full'><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value='none'>No particular package</SelectItem>
+                            {packages.map((p) => {
+                                const offer = activeOffer(p)
+                                return <SelectItem key={p.id} value={p.id}>{p.name}{offer ? ` — ${offer.label}` : ''}</SelectItem>
+                            })}
+                        </SelectContent>
+                    </Select>
+                </div>
+                <div className='space-y-2'>
                     <Label>Send to</Label>
                     <Select value={audience} onValueChange={(value) => setAudience(value as CampaignAudience)}>
                         <SelectTrigger className='w-full'><SelectValue /></SelectTrigger>
@@ -72,7 +111,8 @@ const OffersTab = () => {
                         {audienceSize === null ? 'Counting…' : `${audienceSize} ${audienceSize === 1 ? 'person' : 'people'} will get this message.`}
                     </p>
                 </div>
-                <TemplateEditor value={template} onChange={setTemplate} placeholders={CAMPAIGN_PLACEHOLDERS} />
+                <TemplateEditor value={template} onChange={setTemplate} placeholders={packageId === 'none' ? CAMPAIGN_PLACEHOLDERS : [...CAMPAIGN_PLACEHOLDERS, ...PACKAGE_PLACEHOLDERS]}
+                    sample={(() => { const pkg = packages.find((p) => p.id === packageId); return pkg ? offerValues(pkg) : undefined })()} />
                 <Button onClick={send} disabled={sending || !audienceSize || !title.trim() || !template.trim()}>
                     {sending ? 'Queuing…' : 'Send offer'}
                 </Button>

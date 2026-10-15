@@ -19,7 +19,8 @@ await step("Add Package: Monthly Gym and a personal training package", async () 
     await page.getByRole("button", { name: "Create" }).click(); await toast(page, "Service added successfully");
   }
   await page.goto(`${BASE}/services`);
-  if ((await page.locator("tr", { hasText: "PT Monthly" }).getByRole("switch").getAttribute("aria-checked")) !== "true") throw new Error("PT switch not saved");
+  const pt = page.locator("div.rounded-lg.border", { hasText: "PT Monthly" }).first().getByRole("switch");
+  if ((await pt.getAttribute("aria-checked")) !== "true") throw new Error("PT switch not saved");
 });
 await step("trainer: invalid phone refused, +91 format accepted", async () => {
   await page.goto(`${BASE}/trainers`);
@@ -71,6 +72,15 @@ await step("unpaid PT package shows in Pending Payments and PT clients", async (
   await page.getByRole("button", { name: "Create" }).click(); await page.waitForURL(/\/members\/[0-9a-f-]{36}$/, { timeout: 20000 });
   await page.goto(`${BASE}/sales/pending-payments`); await page.locator("tr", { hasText: "Amit Shah" }).waitFor();
   await page.goto(`${BASE}/trainers`); await page.getByRole("tab", { name: /PT clients/ }).click(); await page.getByText("PT Monthly").first().waitFor();
+});
+await step("Pending Payments: the message button sends from the app, not WhatsApp in the browser", async () => {
+  await page.goto(`${BASE}/sales/pending-payments`);
+  const before = page.context().pages().length;
+  await page.locator("tr", { hasText: "Amit Shah" }).getByTitle("Send on WhatsApp").click();
+  await toast(page, "is on its way");
+  if (page.context().pages().length !== before) throw new Error("a WhatsApp window opened");
+  await page.goto(`${BASE}/whatsapp?tab=log`);
+  await page.getByText(/your payment for PT Monthly of ₹5000 is due/).first().waitFor();
 });
 await step("Member Attendance: check in", async () => {
   await page.goto(`${BASE}/attendance`);

@@ -1,6 +1,7 @@
 'use client'
 import { call } from '@/lib/action-result'
 import { useGymName } from '@/hooks/use-gym-name'
+import { SendWhatsappButton } from '@/components/custom/send-whatsapp-button'
 import { GetAllMembers } from '@/action/member.action'
 import { DeleteSaleById, GetAllSalesWithExpand, SalesResponse } from '@/action/sales.action'
 import { DataTable } from '@/components/custom/data-table'
@@ -83,14 +84,13 @@ const SalesPage = (props: Props) => {
     {
       accessorKey: 'id',
       header: 'Send',
-      cellContent: <Button size={"sm"} variant={"secondary"} className='cursor-pointer'><IconSend /></Button>,
-
-      onClickGetRow: (row: any) => {
-        console.log(row)
-        const message = `Hi ${row.member_name}, here is the invoice for your ${row.service_name}, thank you for choosing us. Stay healthy Stay strong. %0A%0A${window.location.origin}/invoices/${row.id} %0A%0A -Team ${gymName} 💪🏻`
-        window.open(`https://api.whatsapp.com/send?phone=91${row.member.phone}&text=${message}`)
-      }
-
+      cellContentGetRow: (row: any) => (
+        <SendWhatsappButton
+          name={row.member_name}
+          phone={row.member.phone}
+          message={`Hi ${row.member_name}, here is the invoice for your ${row.service_name}. Thank you for choosing ${gymName}. Stay healthy, stay strong!\n\n${typeof window === 'undefined' ? '' : window.location.origin}/invoices/${row.id}`}
+        />
+      ),
     }
   ]
   return (

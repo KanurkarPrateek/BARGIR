@@ -1,4 +1,5 @@
 'use client'
+import { SendWhatsappButton } from '@/components/custom/send-whatsapp-button'
 import { useGymName } from '@/hooks/use-gym-name'
 import { GetEnquiryByFollowupDate } from '@/action/enquiries.action'
 import { getAllExpiringSalesInXDays, GetSalesEndingInXdays } from '@/action/sales.action'
@@ -105,11 +106,7 @@ const page = (props: Props) => {
                     SelectedSale &&
                     <CardContent className='space-y-4'>
                         <p>{message}</p>
-                        <Link className='text-primary mt-4' href={`https://api.whatsapp.com/send?phone=91${SelectedSale?.member_phone}&text=${message}`} target='_blank'>
-                            <Button>
-                                Send
-                            </Button>
-                        </Link>
+                        <SendWhatsappButton key={message} name={SelectedSale.member_name} phone={SelectedSale.member_phone} message={message} label='Send on WhatsApp' />
                     </CardContent>
                 }
 
@@ -129,5 +126,3 @@ const page = (props: Props) => {
 }
 
 export default page
-
-// https://api.whatsapp.com/send?phone=918698969798&text=Hello%20%0ABrother

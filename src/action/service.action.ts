@@ -10,6 +10,9 @@ export interface ServiceInput {
     price: number;
     duration: number; // Duration in months
     isPersonalTraining?: boolean;
+    discountType?: string | null; // "percent" | "flat" | null
+    discountValue?: number;
+    offerTill?: string | null; // dd-MM-yyyy
 }
 
 export interface ServiceResponse {
@@ -19,6 +22,9 @@ export interface ServiceResponse {
     price: number;
     duration: number;
     isPersonalTraining: boolean;
+    discountType: string | null;
+    discountValue: number;
+    offerTill: string | null;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -48,6 +54,7 @@ export async function AddService(data: ServiceInput): Promise<ServiceResponse | 
                   price: Number(data.price),
                   duration: Number(data.duration),
                   isPersonalTraining: data.isPersonalTraining ?? false,
+                  ...discountFields(data),
               },
           });
 
@@ -92,4 +99,34 @@ export async function DeleteServiceById(id: string): Promise<void> {
 export async function SetServicePersonalTraining(id: string, isPersonalTraining: boolean): Promise<void> {
     await requireOwner();
     await prisma.services.update({ where: { id }, data: { isPersonalTraining } });
+}
+
+// Checks and normalises the offer part of a package.
+function discountFields(data: ServiceInput) {
+    const type = data.discountType === "percent" || data.discountType === "flat" ? data.discountType : null;
+    const value = type ? Math.trunc(Number(data.discountValue) || 0) : 0;
+    if (type && value <= 0) throw new UserError("Enter the discount amount, or choose No offer");
+    if (type === "percent" && value >= 100) throw new UserError("A percentage discount must be below 100");
+    if (type === "flat" && value >= Number(data.price)) throw new UserError("The discount must be less than the price");
+    return { discountType: type, discountValue: value, offerTill: type ? data.offerTill || null : null };
+}
+
+// Edit Package: name, price, duration, personal training and offer.
+export async function UpdateService(id: string, data: ServiceInput): Promise<void | Failed> {
+    return safe(async () => {
+        await requireOwner();
+        if (!data.name?.trim()) throw new UserError('Enter the package name');
+        if (!(Number(data.price) > 0) || !(Number(data.duration) > 0)) throw new UserError('Price and duration must be more than zero');
+        await prisma.services.update({
+            where: { id },
+            data: {
+                name: data.name.trim(),
+                description: data.description,
+                price: Number(data.price),
+                duration: Number(data.duration),
+                isPersonalTraining: data.isPersonalTraining ?? false,
+                ...discountFields(data),
+            },
+        });
+    });
 }

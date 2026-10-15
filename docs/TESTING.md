@@ -28,8 +28,8 @@ Google Chrome. The runner (`tests/run-e2e.sh`):
 |---|---|
 | `multi-gym` (17) | Admin creates gyms; one phone = one login; each gym sees only its own members, packages, sales, payments and machines; machines are routed by serial number; public invoices show the right gym; switched-off gyms cannot sign in |
 | `onboarding` (12) | Self sign-up and duplicate phone refused, all six wizard steps, Excel import with per-row problem report (bad phone, unknown package), running memberships and payments imported with no messages, duplicate import skipped, tap-to-claim machine, setup reminder on the dashboard |
-| `daily-flows` (16) | Packages, trainers (phone validation), enquiry → member → subscription → part payment → collect, enquiry marked Joined, Payment Report, PT clients, check-in, WhatsApp welcome/invoice/receipt queued, workflows, offers, invoice page, every page opens, removed pages are gone |
-| `features` (18) | Universal Search, batches, BackDate member/subscription/enquiry/payment with **no** messages, InActive / Pending Renewal / Dormant lists, staff and staff login, Staff Attendance, expenses and profit, biometric Add → punch → attendance, Block → machine refuses, Unblock, Delete, auto-block switch, BlackList refusing check-in |
+| `daily-flows` (17) | Packages, trainers (phone validation), enquiry → member → subscription → part payment → collect, enquiry marked Joined, Payment Report, PT clients, check-in, WhatsApp welcome/invoice/receipt queued, workflows, offers, invoice page, every page opens, removed pages are gone |
+| `features` (21) | Universal Search, batches, BackDate member/subscription/enquiry/payment with **no** messages, InActive / Pending Renewal / Dormant lists, staff and staff login, Staff Attendance, expenses and profit, biometric Add → punch → attendance, Block → machine refuses, Unblock, Delete, auto-block switch, BlackList refusing check-in |
 | `front-desk` (6) | Staff login hides monthly revenue and owner menus, owner pages redirect, desk work still works, removing the login locks them out |
 
 ---
@@ -132,6 +132,8 @@ uses your own number as the member's number.
 | W8 | Run now again | Nothing new (each reminder is sent once) |
 | W9 | Switch off a workflow, repeat its trigger | Nothing sent |
 | W10 | Offers → send to "All members" | Each test member gets it with their own name; Past offers shows sent count |
+| W10a | Package Management → Edit a package: 10% off → **Send offer** | Offers opens with a ready message showing the real offer price; each person gets it by name |
+| W10b | Pending Payments → send button | Payment reminder arrives from the gym's number; no WhatsApp window opens on the computer |
 | W11 | Add a member with a number that has no WhatsApp, sell a package | Sent messages: *Failed — This number is not on WhatsApp* |
 | W12 | Unlink, add an enquiry | Message stays *Waiting*; red banner on every page |
 | W13 | Link again | The waiting message is delivered |

@@ -1,13 +1,16 @@
 'use client'
 import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import React from 'react'
+import React, { Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import ConnectionCard from './_components/connection-card'
 import MessageLog from './_components/message-log'
 import OffersTab from './_components/offers-tab'
 import WorkflowsTab from './_components/workflows-tab'
 
-const WhatsappPage = () => {
+function WhatsappManagement() {
+    const params = useSearchParams()
+    const tab = params.get('tab') ?? 'workflows'
     return (
         <div className='max-w-3xl w-full mx-auto space-y-6 p-4'>
             <div>
@@ -18,7 +21,7 @@ const WhatsappPage = () => {
             </div>
             <Separator />
             <ConnectionCard />
-            <Tabs defaultValue='workflows'>
+            <Tabs defaultValue={tab}>
                 <TabsList>
                     <TabsTrigger value='workflows'>Workflows</TabsTrigger>
                     <TabsTrigger value='offers'>Offers</TabsTrigger>
@@ -38,4 +41,6 @@ const WhatsappPage = () => {
     )
 }
 
-export default WhatsappPage
+export default function WhatsappPage() {
+    return <Suspense><WhatsappManagement /></Suspense>
+}

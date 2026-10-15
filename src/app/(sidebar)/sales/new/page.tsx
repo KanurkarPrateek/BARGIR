@@ -18,6 +18,7 @@ import { addMonths, format, parse } from 'date-fns'
 import React, { useEffect } from 'react'
 import { toast } from 'sonner'
 import { describeDelivery } from '@/lib/invoice-delivery'
+import { activeOffer } from '@/lib/offers'
 import { BackdateBanner } from '@/components/custom/backdate-banner'
 
 const today = () => format(new Date(), 'dd-MM-yyyy')
@@ -48,7 +49,7 @@ const page = ({ searchParams }: { searchParams: any }) => {
             const allServices = await GetAllServices()
             setServices(allServices)
             const service = allServices.find((s) => s.id === preset.service)
-            if (service) setFormState((prev) => ({ ...prev, service_id: service.id, amount: service.price }))
+            if (service) setFormState((prev) => ({ ...prev, service_id: service.id, amount: service.price, discount: activeOffer(service)?.amountOff ?? 0 }))
         }
         fetchData()
     }, [])
@@ -112,8 +113,13 @@ const page = ({ searchParams }: { searchParams: any }) => {
                     Plan / service <span className="text-destructive">*</span>
                 </Label>
                 <ItemSelector data={services} valueKey="id" labelKey="name" defaultValue={formState.service_id} onSelect={(value) => handleInputChange(value, "service_id")} placeholder="Select a plan" searchPlaceholder="Search plans..."
-                    onSelectGetRow={(row) => setFormState((prev) => ({ ...prev, amount: row.price }))}
+                    onSelectGetRow={(row) => setFormState((prev) => ({ ...prev, amount: row.price, discount: activeOffer(row)?.amountOff ?? 0 }))}
                 />
+                {service && activeOffer(service) && (
+                    <p className="text-sm text-green-700 dark:text-green-400">
+                        Offer applied: {activeOffer(service)!.label}{activeOffer(service)!.till ? ` till ${activeOffer(service)!.till}` : ''}. Change the discount below if needed.
+                    </p>
+                )}
                 {service && (
                     <p className="text-muted-foreground text-sm">
                         {rupees(service.price)} for {service.duration} month{service.duration === 1 ? '' : 's'}

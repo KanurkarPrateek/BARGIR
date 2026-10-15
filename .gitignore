@@ -48,3 +48,4 @@ tests/e2e/emails.jsonl
 
 # workout pictures are served from free-exercise-db, see src/lib/exercise-images.ts
 public/exercises/
+.next-e2e/

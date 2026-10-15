@@ -3,6 +3,7 @@
 import { call } from '@/lib/action-result'
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
+import { PackageOfferFields } from "@/components/custom/package-offer-fields"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
@@ -112,6 +113,7 @@ const page = () => {
           onChange={(e) => handleInputChange(e.target.value, "duration")}
         />
       </div>
+      <PackageOfferFields value={formState} onChange={setFormState} />
       <div className="flex items-center justify-between gap-4 rounded-lg border p-3">
         <div>
           <Label>Personal training package</Label>

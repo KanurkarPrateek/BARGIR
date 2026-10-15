@@ -1,5 +1,6 @@
 import prisma from "@/lib/tenant";
-import { parse, startOfDay } from "date-fns";
+import { differenceInCalendarDays, startOfDay } from "date-fns";
+import { DORMANT_AFTER_DAYS, membershipStatus, parseDate } from "@/lib/membership";
 import { CampaignAudience } from "./constants";
 
 export interface Recipient {
@@ -17,18 +18,25 @@ export async function getRecipients(
     if (!recipients.has(key)) recipients.set(key, person);
   };
 
+  // BlackList members never get offers.
   const members = await prisma.member.findMany({
-    select: { name: true, phone: true, sales: { select: { endDate: true } } },
+    where: { blacklisted: false },
+    select: { name: true, phone: true, DOJ: true, sales: { select: { endDate: true } }, attendance: { select: { date: true } } },
   });
 
   if (audience !== "enquiries") {
     const today = startOfDay(new Date());
     for (const member of members) {
-      const active = member.sales.some(
-        (sale) => parse(sale.endDate, "dd-MM-yyyy", new Date()) >= today
-      );
+      const status = membershipStatus(member.sales);
+      const active = status.state === "active" || status.state === "expiring";
       if (audience === "active_members" && !active) continue;
       if (audience === "expired_members" && active) continue;
+      if (audience === "renewal_due" && !(status.state === "expiring" || (status.state === "expired" && (status.daysLeft ?? -999) >= -30))) continue;
+      if (audience === "dormant") {
+        const last = member.attendance.map((a) => parseDate(a.date)).reduce<Date | null>((a, b) => (!a || b > a ? b : a), null);
+        const away = differenceInCalendarDays(today, last ?? parseDate(member.DOJ));
+        if (!active || away < DORMANT_AFTER_DAYS) continue;
+      }
       add(member);
     }
   }

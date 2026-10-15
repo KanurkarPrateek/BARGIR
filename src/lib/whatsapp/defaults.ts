@@ -21,7 +21,7 @@ export const DEFAULTS = [
     trigger: "membership_expiry" as const,
     offsetDays: -3,
     template:
-      "Hi {first_name}, your {service} membership at {gym} ends on {expiry_date}. Renew before then to keep your streak going! Reply here and we'll sort it out for you.",
+      "Hi {first_name}, your {service} membership at {gym} ends on {expiry_date}. Renew before then to keep your streak going! {offer} Reply here and we'll sort it out for you.",
   },
   {
     name: "Membership expired",

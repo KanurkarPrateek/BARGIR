@@ -3,6 +3,7 @@ import { addDays, format, parse, startOfDay } from "date-fns";
 import { appUrl } from "@/lib/app-url";
 import { rupees, saleDue } from "@/lib/membership";
 import { renderTemplate } from "./constants";
+import { offerSentence } from "@/lib/offers";
 import { OutgoingMessage, enqueue } from "./queue";
 
 const DATE_FORMAT = "dd-MM-yyyy";
@@ -99,7 +100,7 @@ export async function runScheduledWorkflows(
         const sales = await prisma.sales.findMany({
           where: { endDate: eventDate },
           include: {
-            service: { select: { name: true } },
+            service: true,
             member: { include: { sales: { select: { endDate: true } } } },
           },
         });
@@ -116,6 +117,7 @@ export async function runScheduledWorkflows(
               ...personValues(sale.member.name, gym),
               service: sale.service.name,
               expiry_date: eventDate,
+              offer: offerSentence(sale.service),
             }),
             // Per member, so two plans ending together send one reminder.
             dedupeKey: `${workflow.id}:${sale.member_id}:${eventDate}`,

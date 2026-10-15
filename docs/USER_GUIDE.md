@@ -107,7 +107,9 @@ Do these once, in this order. Each takes a minute or two.
 | Closing | Count the cash drawer against today's cash total | Expense Management → Payment Report (owner) |
 
 WhatsApp welcome messages, invoices, receipts, renewal reminders and birthday
-wishes go out by themselves once WhatsApp is connected.
+wishes go out by themselves once WhatsApp is connected. The send buttons on
+Pending Payments, View Subscriptions, Renewal Follow-ups and Birthdays send the
+message straight from the gym's WhatsApp too; nothing opens on the computer.
 
 ---
 
@@ -209,8 +211,15 @@ WhatsApp reminders you can send by hand.
 ## Package Management
 
 *(owner)* **Add Package** / **View Package** — name, price, duration in
-months, and whether it is a personal training package. Switch PT on or off for
-existing packages in the list.
+months, and whether it is a personal training package.
+
+- **Offers:** give a package *% off* or *₹ off*, optionally until a date. View
+  Package shows the old and the offer price. The offer is filled in
+  automatically when the package is sold (staff can still change it), and ends
+  by itself after the last date.
+- **Send offer** on a package opens WhatsApp Management → Offers with a ready
+  message (package, price, offer price, valid till), sent to each person by name.
+- **Edit** changes a package for new sales; existing subscriptions keep their price.
 
 ---
 

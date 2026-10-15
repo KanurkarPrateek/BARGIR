@@ -115,6 +115,33 @@ await step("Expense Management: an expense lowers this month's profit", async ()
   await page.getByRole("button", { name: "Add Expense" }).click(); await toast(page, "₹5,000 Rent added");
   await card("Spent").getByText("₹5,000").waitFor();
 });
+await step("Edit Package: a 10% offer shows on View Package", async () => {
+  await page.goto(`${BASE}/services`);
+  const card = page.locator("div.rounded-lg.border", { hasText: "Monthly Gym" }).first();
+  await card.getByRole("button", { name: "Edit" }).click();
+  await page.getByRole("dialog").getByRole("combobox").filter({ hasText: "No offer" }).click();
+  await page.getByRole("option", { name: "% off" }).click();
+  await page.getByRole("dialog").getByPlaceholder("10").fill("10");
+  await page.getByText("Members pay ₹900 instead of ₹1,000").waitFor();
+  await page.getByRole("button", { name: "Save" }).click(); await toast(page, "Package saved");
+  await page.locator("div.rounded-lg.border", { hasText: "Monthly Gym" }).first().getByText("10% off").waitFor();
+});
+await step("the offer is applied automatically on Add Subscription", async () => {
+  await page.goto(`${BASE}/sales/new`);
+  await choose(page, "Select a plan", "Monthly Gym");
+  await page.getByText("Offer applied: 10% off").waitFor();
+  if ((await page.getByPlaceholder("Discount").inputValue()) !== "100") throw new Error("discount not filled");
+});
+await step("Send offer opens WhatsApp Offers with a ready message and sends it by name", async () => {
+  await page.goto(`${BASE}/services`);
+  await page.locator("div.rounded-lg.border", { hasText: "Monthly Gym" }).first().getByRole("button", { name: "Send offer" }).click();
+  await page.waitForURL(/whatsapp\?tab=offers&package=/);
+  await page.waitForFunction(() => document.querySelector("textarea")?.value.includes("{offer_price}"));
+  await page.getByText(/for just ₹900 instead of ₹1,000/).first().waitFor();
+  await page.getByRole("button", { name: "Send offer" }).click(); await toast(page, "Offer queued");
+  await page.getByRole("tab", { name: "Sent messages" }).click();
+  await page.getByText(/Monthly Gym for just ₹900 instead of ₹1,000 \(10% off\)/).first().waitFor();
+});
 let machine;
 await step("Biometric: Add Biometric sends the member to the machine", async () => {
   await page.goto(`${BASE}/attendance/biometric?tab=machines`);

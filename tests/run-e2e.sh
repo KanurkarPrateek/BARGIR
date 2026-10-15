@@ -14,6 +14,8 @@ APP_PORT=3100
 export BASE="http://localhost:$APP_PORT"
 export SUPERADMIN_LOGIN=admin
 export SUPERADMIN_PASSWORD="e2e-admin-password"
+# Separate build folder, so a running development server is not disturbed.
+export NEXT_DIST_DIR=.next-e2e
 
 cleanup() {
   for pid in ${PIDS:-}; do kill "$pid" 2>/dev/null; done

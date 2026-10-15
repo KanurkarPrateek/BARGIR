@@ -7,6 +7,7 @@ import { IconSend } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
 import React, { useEffect } from 'react'
 import { RecordPaymentDialog } from '@/components/custom/record-payment-dialog'
+import { SendWhatsappButton } from '@/components/custom/send-whatsapp-button'
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 type Props = {}
@@ -52,13 +53,13 @@ const PendingPayments = ({ }: Props) => {
         {
             accessorKey: 'id',
             header: 'Message',
-            cellContent: <Button variant="destructive" className='cursor-pointer'><IconSend size={16} /></Button>,
-            onClickGetRow: (row: any) => {
-                console.log(row)
-                const message = `Hi ${row.member_name}, your payment for ${row.service_name} of ₹${row.due} is due, thank you for choosing us. Stay healthy Stay strong.%0A%0A -Team ${gymName} 💪🏻`
-                window.open(`https://api.whatsapp.com/send?phone=91${row.member_phone}&text=${message}`)
-            },
-            // cellContentGetRow: (row: any) => <Button variant="secondary" className='cursor-pointer'><IconSend size={16} /></Button>,
+            cellContentGetRow: (row: any) => (
+                <SendWhatsappButton
+                    name={row.member_name}
+                    phone={row.member_phone}
+                    message={`Hi ${row.member_name}, your payment for ${row.service_name} of ₹${row.due} is due. Thank you for choosing ${gymName}. Stay healthy, stay strong! 💪`}
+                />
+            ),
         },
         {
             accessorKey: 'id',

@@ -41,6 +41,14 @@ them without messaging real members by mistake.
 Trainers additionally get: a message when an enquiry or member is assigned to
 them, and one daily list of the enquiries they must follow up.
 
+**Sent by staff with one tap:** the send buttons on Pending Payments (payment
+reminder), View Subscriptions (invoice link), Renewal Follow-ups and Birthdays go
+through the same queue from the gym's number; no WhatsApp window opens.
+
+**Offer audiences:** active members, pending renewal (ending soon or ended in the
+last 30 days), dormant members, members without an active membership, all
+members, enquiries, everyone. BlackList members never get offers.
+
 **Never sent:** anything for BackDate entries, payments dated in the past,
 enquiries marked Joined or Lost, or offers to enquiries marked Lost.
 
@@ -63,6 +71,8 @@ Type these in a message; each person gets their own values.
 | `{followup_date}` | Enquiry follow-up date |
 | `{amount}` / `{paid}` / `{due}` | Package price / amount paid / balance |
 | `{invoice_link}` | Link to the printable invoice |
+| `{offer}` | In renewal reminders: "Renew now at ₹900 (10% off till 31-10-2026)." when the package has an offer, otherwise nothing |
+| `{package}` / `{price}` / `{offer_price}` / `{discount}` / `{valid_till}` | In offers about a package: its name, normal price, offer price, "10% off", last day |
 
 ## Linking the gym's number
 

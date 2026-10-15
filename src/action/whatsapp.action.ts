@@ -13,6 +13,7 @@ import {
 import { enqueue } from "@/lib/whatsapp/queue";
 import { personValues, runScheduledWorkflows } from "@/lib/whatsapp/workflows";
 import { requireIndianMobile } from "@/lib/phone";
+import { offerValues } from "@/lib/offers";
 
 type MessageStatus = "pending" | "sent" | "failed";
 
@@ -136,6 +137,8 @@ export async function SendCampaign(data: {
   title: string;
   template: string;
   audience: CampaignAudience;
+  // The package the offer is about, for the package tags.
+  service_id?: string | null;
 }): Promise<number | Failed> {
   return safe(async () => {
     await requireOwner();
@@ -145,12 +148,17 @@ export async function SendCampaign(data: {
     const recipients = await getRecipients(data.audience);
     if (recipients.length === 0) throw new UserError("Nobody matches this audience");
 
+    const pkg = data.service_id ? await prisma.services.findUnique({ where: { id: data.service_id } }) : null;
+    if (data.service_id && !pkg) throw new UserError("Package not found");
+    const packageValues = pkg ? offerValues(pkg) : {};
+
     const gym = await currentGymName();
     const campaign = await prisma.whatsappCampaign.create({
       data: {
         title: data.title.trim(),
         template: data.template.trim(),
         audience: data.audience,
+        service_id: pkg?.id ?? null,
       },
     });
 
@@ -158,7 +166,7 @@ export async function SendCampaign(data: {
       recipients.map((person) => ({
         name: person.name,
         phone: person.phone,
-        body: renderTemplate(campaign.template, personValues(person.name, gym)),
+        body: renderTemplate(campaign.template, { ...packageValues, ...personValues(person.name, gym) }),
         campaign_id: campaign.id,
       }))
     );
@@ -217,4 +225,15 @@ export async function RetryFailedMessages(): Promise<number> {
   });
   await nudgeSender();
   return count;
+}
+
+// A one-off message typed or chosen by staff (payment reminder, renewal
+// reminder, birthday wish, invoice link), sent from the gym's own linked
+// WhatsApp number through the same queue as the automatic messages.
+export async function SendWhatsappMessage(name: string, phone: string, body: string): Promise<void | Failed> {
+  return safe(async () => {
+    const text = body.trim();
+    if (!text) throw new UserError("Message is empty");
+    await enqueue([{ name: name.trim() || "Member", phone: requireIndianMobile(phone), body: text }]);
+  });
 }
