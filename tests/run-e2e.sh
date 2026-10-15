@@ -16,6 +16,13 @@ export SUPERADMIN_LOGIN=admin
 export SUPERADMIN_PASSWORD="e2e-admin-password"
 # Separate build folder, so a running development server is not disturbed.
 export NEXT_DIST_DIR=.next-e2e
+# The Control Panel (control/) manages this test copy through its API.
+export PLATFORM_API_KEY="e2e-platform-key-0123456789abcdef"
+CONTROL_PORT=3500
+export CONTROL_BASE="http://localhost:$CONTROL_PORT"
+export CONTROL_ADMIN_EMAIL=owner@example.com
+export CONTROL_ADMIN_PASSWORD="e2e-control-password"
+CONTROL_DB_URL="${DB_URL%/*}/gym_control_e2e"
 
 cleanup() {
   for pid in ${PIDS:-}; do kill "$pid" 2>/dev/null; done
@@ -36,7 +43,7 @@ node tests/e2e/stand-in-sender.mjs & PIDS="$!"
 node tests/e2e/mock-email.mjs & PIDS="$PIDS $!"
 DATABASE_URL="$DB_URL" DIRECT_URL="$DB_URL" \
   SESSION_SECRET="e2e-session-secret-at-least-32-characters" \
-  WHATSAPP_WORKER_URL=http://localhost:3201 WHATSAPP_WORKER_KEY=test CRON_SECRET=test \
+  PLATFORM_API_KEY="$PLATFORM_API_KEY" WHATSAPP_WORKER_URL=http://localhost:3201 WHATSAPP_WORKER_KEY=test CRON_SECRET=test \
   RESEND_API_KEY=test EMAIL_FROM=billing@example.com RESEND_API_URL=http://localhost:3300/emails \
   NODE_OPTIONS=--no-experimental-webstorage npx next start -p $APP_PORT >/tmp/gym-e2e-app.log 2>&1 & PIDS="$PIDS $!"
 for _ in $(seq 1 40); do curl -s -o /dev/null "$BASE/signin" && break; sleep 1; done
@@ -45,6 +52,19 @@ failed=0
 for suite in multi-gym onboarding daily-flows features front-desk; do
   node "tests/e2e/$suite.test.mjs" || failed=$((failed + 1))
 done
+echo "→ control panel build"
+(
+  cd control
+  [ -d node_modules ] || npm ci --silent >/dev/null
+  DATABASE_URL="$CONTROL_DB_URL" DIRECT_URL="$CONTROL_DB_URL" npx prisma db push --force-reset --accept-data-loss --skip-generate >/dev/null
+  npx next build >/tmp/control-e2e-build.log 2>&1
+) || { tail -30 /tmp/control-e2e-build.log; exit 1; }
+(cd control && exec env DATABASE_URL="$CONTROL_DB_URL" DIRECT_URL="$CONTROL_DB_URL" \
+  CONTROL_SECRET="e2e-control-secret-at-least-32-characters" \
+  npx next start -p $CONTROL_PORT >/tmp/control-e2e-app.log 2>&1) & PIDS="$PIDS $!"
+for _ in $(seq 1 40); do curl -s -o /dev/null "$CONTROL_BASE/signin" && break; sleep 1; done
+node tests/e2e/control.test.mjs || failed=$((failed + 1))
+
 echo "Screenshots of failures, if any: tests/e2e/screenshots/"
 [ $failed -eq 0 ] && echo "ALL SUITES PASSED" || echo "$failed SUITE(S) FAILED"
 exit $failed

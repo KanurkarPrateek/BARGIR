@@ -71,6 +71,16 @@ The tables are created automatically on the first Vercel deploy.
 3. Open **WhatsApp** in the sidebar and scan the QR code with the gym's phone
    (WhatsApp → Settings → Linked devices → Link a device).
 
+## Running several clusters
+
+Free plans hold about 5 gyms per set of accounts. To grow, repeat steps 1–4 with
+new accounts for each set, and manage them all from the **Control Panel**
+(`control/`, see [control/README.md](control/README.md)). It generates each
+cluster's secrets, gives you the values to paste into Vercel and Render, creates
+gyms on the cluster with room, and switches gyms off when they stop paying.
+Each cluster then also needs `PLATFORM_API_KEY` (included in what the Control
+Panel gives you), and `ALLOW_SIGNUP=false` so gyms are added through it.
+
 ## 5. Biometric machines
 
 Every gym's machine points at the same address; the gym adds its machine's

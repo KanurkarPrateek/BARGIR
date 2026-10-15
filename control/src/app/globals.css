@@ -1,0 +1,14 @@
+@import "tailwindcss";
+
+:root { color-scheme: light dark; }
+
+/* In the base layer, so utility classes (text-right, w-auto...) still win. */
+@layer base {
+  body { @apply bg-stone-50 text-stone-900 antialiased dark:bg-stone-950 dark:text-stone-100; }
+  input, select, textarea { @apply w-full rounded-md border border-stone-300 bg-white px-3 py-2 text-sm dark:border-stone-700 dark:bg-stone-900; }
+  input[type=checkbox] { @apply w-auto; }
+  label { @apply block text-sm font-medium; }
+  table { @apply w-full text-sm; }
+  th { @apply py-2 pr-3 text-left font-medium text-stone-500; }
+  td { @apply border-t border-stone-200 py-2 pr-3 align-top dark:border-stone-800; }
+}

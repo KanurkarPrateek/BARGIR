@@ -70,3 +70,10 @@ auto-block on expiry) for eSSL / ZKTeco / BioMax push machines
   registers its machine's serial number, which routes punches to that gym.
 
 See `DEPLOY.md` to run or deploy it.
+
+## Control Panel
+
+`control/` is a separate internal app for running this as a business: clusters
+(each Vercel + Supabase + Render set holding about 5 gyms), creating and
+suspending gyms, billing, salespeople and their commission. See
+[control/README.md](control/README.md).

@@ -21,7 +21,7 @@ Google Chrome. The runner (`tests/run-e2e.sh`):
 - creates a **separate** database `gym_e2e` and a production build of the app on port 3100,
 - uses a **stand-in WhatsApp sender** and a **stand-in email service**, so no real
   message or email can be sent,
-- runs five suites in order and prints ✓ / ✗ per step,
+- runs six suites in order (the last one also builds and starts the Control Panel on port 3500) and prints ✓ / ✗ per step,
 - saves a screenshot of every failed step in `tests/e2e/screenshots/`.
 
 | Suite | What it proves |
@@ -30,6 +30,7 @@ Google Chrome. The runner (`tests/run-e2e.sh`):
 | `onboarding` (12) | Self sign-up and duplicate phone refused, all six wizard steps, Excel import with per-row problem report (bad phone, unknown package), running memberships and payments imported with no messages, duplicate import skipped, tap-to-claim machine, setup reminder on the dashboard |
 | `daily-flows` (18) | Packages, trainers (phone validation), enquiry → member → subscription → part payment → collect, enquiry marked Joined, Payment Report, PT clients, check-in, WhatsApp welcome/invoice/receipt queued, workflows, offers, invoice page and PDF, every page opens, removed pages are gone |
 | `features` (22) | Universal Search, batches, BackDate member/subscription/enquiry/payment with **no** messages, InActive / Pending Renewal / Dormant lists, staff and staff login, Staff Attendance, expenses and profit, biometric Add → punch → attendance, Block → machine refuses, Unblock, Delete, auto-block switch, BlackList refusing check-in |
+| `control` (14) | Control Panel against the test app: wrong cluster key reported, cluster health and settings to paste, new gym created on the cluster with a working owner login, duplicate owner phone refused, payment moves the renewal and books 10% commission, suspend blocks sign-in and resume restores it, owner password reset, linking a gym that signed itself up, MRR and capacity, a salesperson sees only their own gyms, commission payout |
 | `front-desk` (6) | Staff login hides monthly revenue and owner menus, owner pages redirect, desk work still works, removing the login locks them out |
 
 ---

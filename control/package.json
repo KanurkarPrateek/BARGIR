@@ -1,0 +1,30 @@
+{
+  "name": "gym-control-panel",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Internal app that runs the gym software business: clusters, gyms, billing, sales and commission.",
+  "scripts": {
+    "dev": "next dev -p 3400",
+    "build": "next build",
+    "start": "next start -p 3400",
+    "vercel-build": "prisma db push --skip-generate && next build",
+    "postinstall": "prisma generate"
+  },
+  "dependencies": {
+    "@prisma/client": "6.7.0",
+    "date-fns": "^4.1.0",
+    "next": "15.3.8",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "sonner": "^2.0.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "prisma": "6.7.0",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}

@@ -1,0 +1,121 @@
+// Control Panel: the business side of the gym software.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  admin
+  sales
+}
+
+// Someone in your team: admins run everything; sales see their own gyms and commission.
+model User {
+  id                String        @id @default(uuid())
+  name              String
+  email             String        @unique
+  passwordHash      String
+  role              Role          @default(sales)
+  // Default commission for gyms this person sells, in percent.
+  commissionPercent Int           @default(10)
+  active            Boolean       @default(true)
+  createdAt         DateTime      @default(now())
+  gyms              GymAccount[]
+  payouts           Payout[]
+  payments          Payment[]
+}
+
+// One deployment of the gym software: a Vercel app + Supabase database +
+// Render WhatsApp sender, holding up to `capacity` gyms.
+model Cluster {
+  id              String       @id @default(uuid())
+  name            String       @unique
+  appUrl          String
+  // PLATFORM_API_KEY of that deployment, encrypted with CONTROL_SECRET.
+  apiKeyEncrypted String
+  // Every other setting of that deployment (database URLs, SESSION_SECRET,
+  // sender key...), as encrypted JSON. See src/lib/cluster-config.ts.
+  secretsEncrypted String?
+  capacity        Int          @default(5)
+  vercelAccount   String?
+  supabaseAccount String?
+  supabaseProject String?
+  renderAccount   String?
+  senderUrl       String?
+  notes           String?
+  createdAt       DateTime     @default(now())
+  gyms            GymAccount[]
+}
+
+enum Plan {
+  monthly
+  quarterly
+  half_yearly
+  yearly
+}
+
+enum GymStatus {
+  trial
+  active
+  suspended
+  cancelled
+}
+
+// A gym that uses the software: the customer.
+model GymAccount {
+  id                String     @id @default(uuid())
+  name              String
+  ownerName         String
+  ownerPhone        String
+  city              String?
+  cluster_id        String
+  cluster           Cluster    @relation(fields: [cluster_id], references: [id])
+  // The gym's id inside its cluster.
+  remoteId          String?
+  salesperson_id    String?
+  salesperson       User?      @relation(fields: [salesperson_id], references: [id], onDelete: SetNull)
+  // Commission for this gym, copied from the salesperson when sold.
+  commissionPercent Int        @default(0)
+  plan              Plan       @default(monthly)
+  price             Int
+  startDate         DateTime
+  renewalDate       DateTime
+  status            GymStatus  @default(active)
+  notes             String?
+  createdAt         DateTime   @default(now())
+  payments          Payment[]
+
+  @@unique([cluster_id, remoteId])
+}
+
+// Money a gym paid you. Commission is worked out when it is recorded.
+model Payment {
+  id             String     @id @default(uuid())
+  gym_id         String
+  gym            GymAccount @relation(fields: [gym_id], references: [id], onDelete: Cascade)
+  amount         Int
+  date           DateTime
+  mode           String     @default("upi")
+  note           String?
+  salesperson_id String?
+  salesperson    User?      @relation(fields: [salesperson_id], references: [id], onDelete: SetNull)
+  commission     Int        @default(0)
+  createdAt      DateTime   @default(now())
+}
+
+// Commission paid out to a salesperson.
+model Payout {
+  id        String   @id @default(uuid())
+  user_id   String
+  user      User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  amount    Int
+  date      DateTime
+  note      String?
+  createdAt DateTime @default(now())
+}

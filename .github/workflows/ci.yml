@@ -44,6 +44,7 @@ jobs:
           cache-dependency-path: |
             package-lock.json
             worker/package-lock.json
+            control/package-lock.json
 
       - name: Install
         run: npm ci
@@ -59,6 +60,13 @@ jobs:
         run: |
           npm ci
           node --check index.js
+
+      - name: Control Panel installs and type-checks
+        working-directory: control
+        run: |
+          npm ci
+          npx prisma validate
+          npx tsc --noEmit
 
       - name: Biometric simulator parses
         run: node --check tools/biometric-simulator/simulator.mjs
@@ -79,3 +87,7 @@ jobs:
       - name: App log
         if: failure()
         run: tail -100 /tmp/gym-e2e-app.log || true
+
+      - name: Control Panel log
+        if: failure()
+        run: tail -60 /tmp/control-e2e-app.log /tmp/control-e2e-build.log || true
