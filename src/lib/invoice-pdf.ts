@@ -149,10 +149,12 @@ export async function buildInvoicePdf(saleId: string): Promise<{ bytes: Uint8Arr
   write("PERIOD", periodX, y, 8, bold, ACCENT);
   writeRight("AMOUNT", width - M - 10, y, 8, bold, ACCENT);
   y -= 26;
-  write(`${sale.service.name} membership`, M + 10, y, 10.5, bold);
+  // A long plan name wraps within its column instead of running into the dates.
+  const description = wrap(`${sale.service.name} membership`, 10.5, periodX - M - 26, bold);
   write(`${sale.startDate} to ${sale.endDate}`, periodX, y, 10, regular, GREY);
   writeRight(money(sale.amount), width - M - 10, y, 10.5);
-  y -= 12;
+  description.forEach((line, i) => write(line, M + 10, y - i * 13, 10.5, bold));
+  y -= 12 + (description.length - 1) * 13;
   rule(y);
   y -= 24;
 
