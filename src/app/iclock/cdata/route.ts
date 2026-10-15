@@ -15,15 +15,16 @@ function deviceTimeZone(): number {
   return minutes % 60 === 0 ? minutes / 60 : minutes;
 }
 
-// Null for a machine no gym has registered.
+// Null for a machine no gym has claimed yet. Unknown machines are remembered
+// (without a gym) so their owner can claim them under Machine Setup.
 async function knownDevice(serial: string | null) {
-  if (!serial) return null;
-  const device = await base.biometricDevice.findUnique({ where: { serial } });
-  if (!device) return null;
-  return base.biometricDevice.update({
+  if (!serial || !/^[\w-]{4,40}$/.test(serial)) return null;
+  const device = await base.biometricDevice.upsert({
     where: { serial },
-    data: { lastSeenAt: new Date() },
+    create: { serial, lastSeenAt: new Date() },
+    update: { lastSeenAt: new Date() },
   });
+  return device.gym_id ? device : null;
 }
 
 export async function GET(request: NextRequest) {

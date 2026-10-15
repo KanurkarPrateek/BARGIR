@@ -26,6 +26,7 @@ import {
     UnlinkedId,
 } from '@/action/biometric.action'
 import { GetMemberList, MemberListRow } from '@/action/profile.action'
+import { ClaimMachine, GetUnclaimedMachines } from '@/action/onboarding.action'
 import { GetSessionInfo } from '@/action/staff.action'
 import { GetStaffList, StaffRow } from '@/action/team.action'
 import ItemSelector from '@/components/custom/item-selector'
@@ -63,11 +64,13 @@ function BiometricManagement() {
     const [pickStaff, setPickStaff] = useState('')
     const [choices, setChoices] = useState<Record<string, string>>({})
     const [port, setPort] = useState('')
+    const [unclaimed, setUnclaimed] = useState<{ serial: string; lastSeenAt: Date | null }[]>([])
     const fileInput = useRef<HTMLInputElement>(null)
 
     const load = async () => {
         const [d, m, s, u, l, c] = await Promise.all([GetDevices(), GetMemberList(), GetStaffList(), GetUnlinkedIds(), GetLinkedPeople(), GetCommands()])
         setDevices(d); setMembers(m); setStaff(s); setUnlinked(u); setLinked(l); setCommands(c)
+        setUnclaimed(await GetUnclaimedMachines())
     }
     useEffect(() => {
         load()
@@ -293,6 +296,14 @@ function BiometricManagement() {
                                     <span className='text-muted-foreground'>Enable domain name</span><span>{server.isDomain ? 'On' : 'Off'}</span>
                                     <span className='text-muted-foreground'>HTTPS</span><span>Off</span>
                                 </div>
+                                {unclaimed.length > 0 && <p className='text-sm'>Machines that just connected. Add yours only if the serial number matches the sticker on the back of your machine.</p>}
+                                {unclaimed.map((m) => (
+                                    <div key={m.serial} className='flex items-center gap-3 rounded-lg border border-blue-300 p-3'>
+                                        <span className='font-mono'>{m.serial}</span>
+                                        <span className='text-muted-foreground text-sm'>just connected</span>
+                                        <Button size='sm' className='ml-auto' onClick={() => run(() => call(ClaimMachine(m.serial)), 'Machine added')}>This is my machine</Button>
+                                    </div>
+                                ))}
                                 <div className='flex gap-2'>
                                     <Input placeholder='Machine serial number' value={newSerial} onChange={(e) => setNewSerial(e.target.value)} />
                                     <Button disabled={!newSerial.trim()} onClick={() => run(async () => { await call(RegisterDevice(newSerial)); setNewSerial('') }, 'Machine added. It connects by itself within a minute.')}>Add machine</Button>

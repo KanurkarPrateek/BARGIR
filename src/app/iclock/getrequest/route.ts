@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
   const serial = request.nextUrl.searchParams.get("SN");
   if (!serial) return text("OK");
   const device = await prisma.biometricDevice.findUnique({ where: { serial } });
-  if (!device) return text("OK");
+  if (!device?.gym_id) return text("OK");
   await prisma.biometricDevice.update({ where: { serial }, data: { lastSeenAt: new Date() } });
 
   const commands = await prisma.biometricCommand.findMany({

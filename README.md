@@ -8,6 +8,10 @@ Based on [atharvaarbat/gym-management](https://github.com/atharvaarbat/gym-manag
 
 ## Features
 
+**Onboarding:** gyms sign themselves up at `/signup` and a six-step setup wizard
+(packages, batches, Excel member import, WhatsApp, biometric machine) gets them
+running in about five minutes.
+
 **Management:** Dashboard · Universal Search Member · Attendance Management
 (Member Attendance, Staff Attendance, View Attendance) · Member Management
 (Add Member, View Member, View Batch, InActive Member, BlackList Member, Dormant

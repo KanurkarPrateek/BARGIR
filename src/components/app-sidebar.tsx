@@ -71,6 +71,7 @@ const SECTIONS: { label: string; items: NavItem[] }[] = [
         icon: IconUsers,
         children: [
           { title: "Add Member", url: "/members/new" },
+          { title: "Import Members", url: "/members/import", ownerOnly: true },
           { title: "View Member", url: "/members" },
           { title: "View Batch", url: "/members/batches" },
           { title: "InActive Member", url: "/members?view=inactive" },
@@ -170,7 +171,10 @@ const SECTIONS: { label: string; items: NavItem[] }[] = [
   },
   {
     label: "Settings",
-    items: [{ title: "Gym Settings", url: "/settings", icon: IconSettings, ownerOnly: true }],
+    items: [
+      { title: "Gym Settings", url: "/settings", icon: IconSettings, ownerOnly: true },
+      { title: "Setup Wizard", url: "/setup", icon: IconPlayerTrackPrev, ownerOnly: true },
+    ],
   },
 ];
 

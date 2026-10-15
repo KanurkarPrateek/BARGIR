@@ -40,7 +40,7 @@ DATABASE_URL="$DB_URL" DIRECT_URL="$DB_URL" \
 for _ in $(seq 1 40); do curl -s -o /dev/null "$BASE/signin" && break; sleep 1; done
 
 failed=0
-for suite in multi-gym daily-flows features front-desk; do
+for suite in multi-gym onboarding daily-flows features front-desk; do
   node "tests/e2e/$suite.test.mjs" || failed=$((failed + 1))
 done
 echo "Screenshots of failures, if any: tests/e2e/screenshots/"

@@ -21,12 +21,13 @@ Google Chrome. The runner (`tests/run-e2e.sh`):
 - creates a **separate** database `gym_e2e` and a production build of the app on port 3100,
 - uses a **stand-in WhatsApp sender** and a **stand-in email service**, so no real
   message or email can be sent,
-- runs four suites in order and prints ✓ / ✗ per step,
+- runs five suites in order and prints ✓ / ✗ per step,
 - saves a screenshot of every failed step in `tests/e2e/screenshots/`.
 
 | Suite | What it proves |
 |---|---|
 | `multi-gym` (17) | Admin creates gyms; one phone = one login; each gym sees only its own members, packages, sales, payments and machines; machines are routed by serial number; public invoices show the right gym; switched-off gyms cannot sign in |
+| `onboarding` (12) | Self sign-up and duplicate phone refused, all six wizard steps, Excel import with per-row problem report (bad phone, unknown package), running memberships and payments imported with no messages, duplicate import skipped, tap-to-claim machine, setup reminder on the dashboard |
 | `daily-flows` (16) | Packages, trainers (phone validation), enquiry → member → subscription → part payment → collect, enquiry marked Joined, Payment Report, PT clients, check-in, WhatsApp welcome/invoice/receipt queued, workflows, offers, invoice page, every page opens, removed pages are gone |
 | `features` (18) | Universal Search, batches, BackDate member/subscription/enquiry/payment with **no** messages, InActive / Pending Renewal / Dormant lists, staff and staff login, Staff Attendance, expenses and profit, biometric Add → punch → attendance, Block → machine refuses, Unblock, Delete, auto-block switch, BlackList refusing check-in |
 | `front-desk` (6) | Staff login hides monthly revenue and owner menus, owner pages redirect, desk work still works, removing the login locks them out |
@@ -40,6 +41,17 @@ number** for every member, enquiry, trainer and staff member you create, so any
 WhatsApp message reaches you and nobody else.
 
 Tick each line. *Expected* is what should happen.
+
+### Onboarding a new gym
+
+| # | Do | Expected |
+|---|---|---|
+| O1 | `/signup` with a new phone number | Account created; setup wizard, step 1 of 6 |
+| O2 | `/signup` again with the same phone | "This phone number already has an account" |
+| O3 | Wizard steps 1–3 with the defaults | Packages and batches appear under Package Management and View Batch |
+| O4 | Step 4: download the template, fill 3 rows (one with a bad phone), upload | 2 imported; the bad row listed with its row number |
+| O5 | Step 6: set the machine's server address, wait | Its serial appears; **This is my machine** adds it |
+| O6 | Finish setup | Dashboard, no setup reminder |
 
 ### Sign-in and roles
 

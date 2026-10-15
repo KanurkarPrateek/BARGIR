@@ -280,7 +280,9 @@ model WhatsappMessage {
 // same address and the serial decides which gym its punches belong to.
 model BiometricDevice {
   serial      String   @id
-  gym_id      String
+  // Empty while no gym has claimed it: a machine that contacts the server
+  // first is listed under Machine Setup so its gym can claim it in one tap.
+  gym_id      String   @default("")
   // Position in the machine's log up to which punches have been received.
   attlogStamp String   @default("0")
   lastSeenAt  DateTime?
@@ -338,6 +340,8 @@ model Gym {
   // Remove members from the biometric machines when their membership ends,
   // and add them back when they renew.
   autoBlockExpired Boolean @default(false)
+  // False until the owner finishes (or skips) the setup wizard.
+  setupDone        Boolean @default(false)
   // Small image stored as a data URL (shrunk in the browser before upload),
   // so no file storage is needed.
   logo      String?

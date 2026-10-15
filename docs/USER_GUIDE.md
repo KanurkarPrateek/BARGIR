@@ -4,6 +4,7 @@ How to run a gym with this software, written for the gym owner and the
 front-desk team. Menu names match the left sidebar.
 
 - [Who can do what](#who-can-do-what)
+- [Getting started (about 5 minutes)](#getting-started-about-5-minutes)
 - [First day: set up your gym](#first-day-set-up-your-gym)
 - [Every day at the front desk](#every-day-at-the-front-desk)
 - [Universal Search Member](#universal-search-member)
@@ -42,7 +43,35 @@ help with setup.
 
 ---
 
+## Getting started (about 5 minutes)
+
+1. Open the app's address and click **Start here** (or go to `/signup`). Enter your
+   gym's name, your name, your mobile number and a password.
+2. The **setup wizard** opens. Six short steps, each one skippable:
+
+| Step | What you do |
+|---|---|
+| 1. Your gym | Address, contact number, GST number |
+| 2. Packages | Tick the plans you sell and type your prices (Monthly, Quarterly, Half Yearly, Yearly, Personal Training) |
+| 3. Batches | Tick your time slots and adjust the times |
+| 4. Members | Upload your member list from **Excel or CSV**. Only Name and Phone are needed; add Package, Start date and Paid to bring in running memberships. **Download template** shows the format. Nobody is messaged. |
+| 5. WhatsApp | Scan the QR code with the gym's phone |
+| 6. Biometric | Type the address shown into the machine; when it connects, tap **This is my machine** (check the serial matches the sticker) |
+
+3. **Finish setup** takes you to the dashboard. Until you finish, a blue
+   *Finish setting up your gym* card on the dashboard brings you back, and the
+   wizard is always under **Settings → Setup Wizard**.
+
+Your member register can also be imported later from **Member Management →
+Import Members**. Rows with a problem (wrong phone number, unknown package,
+already a member) are listed with their row number so you can fix and re-upload
+just those.
+
+---
+
 ## First day: set up your gym
+
+The wizard covers most of this. To do it by hand instead:
 
 Do these once, in this order. Each takes a minute or two.
 

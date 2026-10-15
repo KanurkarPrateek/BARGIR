@@ -43,6 +43,7 @@ The tables are created automatically on the first Vercel deploy.
    | `WHATSAPP_WORKER_KEY` | your second secret |
    | `CRON_SECRET` | your third secret |
    | `WHATSAPP_WORKER_URL` | leave empty for now; filled in step 4 |
+   | `ALLOW_SIGNUP` | optional: `false` to stop gyms signing themselves up at `/signup` |
 
 3. Deploy. Vercel runs `vercel-build`, which creates the database tables and builds the app.
 4. Open `https://<your-app>.vercel.app/signin` and sign in with the admin login.
@@ -65,7 +66,8 @@ The tables are created automatically on the first Vercel deploy.
 ## 4. Connect the two
 
 1. On Vercel set `WHATSAPP_WORKER_URL` to the Render address and redeploy.
-2. Sign in as admin, **Add gym**, then sign in as that gym's owner.
+2. Either sign in as admin and **Add gym**, or let the gym owner sign themselves up at
+   `https://<your-app>.vercel.app/signup`. Either way the owner lands in the setup wizard.
 3. Open **WhatsApp** in the sidebar and scan the QR code with the gym's phone
    (WhatsApp → Settings → Linked devices → Link a device).
 

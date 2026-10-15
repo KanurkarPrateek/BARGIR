@@ -74,6 +74,10 @@ export async function RegisterDevice(serial: string): Promise<void | Failed> {
     }
     const gym_id = await requireGymId();
     const existing = await base.biometricDevice.findUnique({ where: { serial } });
+    if (existing && !existing.gym_id) {
+      await base.biometricDevice.update({ where: { serial }, data: { gym_id } });
+      return;
+    }
     if (existing) {
       throw new UserError(
         existing.gym_id === gym_id

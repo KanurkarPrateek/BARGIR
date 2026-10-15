@@ -67,7 +67,7 @@ const GymsPage = () => {
             <div className='flex items-center justify-between'>
                 <div>
                     <h1 className='text-xl font-semibold'>Gyms</h1>
-                    <p className='text-muted-foreground text-sm'>Each gym has its own login and sees only its own data.</p>
+                    <p className='text-muted-foreground text-sm'>Each gym has its own login and sees only its own data. Gyms can also sign themselves up at <span className='font-mono'>/signup</span>.</p>
                 </div>
                 <div className='flex gap-2'>
                     <Button variant='outline' onClick={signOut}>Sign out</Button>
