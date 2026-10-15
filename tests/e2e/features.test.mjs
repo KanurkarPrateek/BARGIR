@@ -155,6 +155,27 @@ await step("Sales Analytics: totals, charts and Excel download", async () => {
   if (!/^sales-.*\.xlsx$/.test(download.suggestedFilename())) throw new Error(download.suggestedFilename());
 });
 let machine;
+await step("WhatsApp group: only admin groups can be chosen; new members are added, backdated ones are not", async () => {
+  await page.goto(`${BASE}/whatsapp`);
+  await page.getByRole("button", { name: "Choose group" }).click();
+  const select = page.locator("#wa-group"); await select.waitFor();
+  if ((await select.locator("option", { hasText: "Family chat" }).getAttribute("disabled")) === null) throw new Error("a group where the number is not admin can be chosen");
+  await select.selectOption({ label: "Test Gym Members (42 people)" });
+  await page.getByRole("button", { name: "Save group" }).click(); await toast(page, "New members will be added to Test Gym Members");
+  await page.goto(`${BASE}/members/new`);
+  await page.getByPlaceholder("Name", { exact: true }).fill("Group Joiner"); await page.getByPlaceholder("Phone", { exact: true }).fill("9876522299");
+  await pickDate(page); await page.getByRole("button", { name: "Create" }).click();
+  await page.waitForURL(/sales\/new\?member=/, { timeout: 20000 });
+  await page.goto(`${BASE}/whatsapp?tab=log`);
+  await page.locator("div.rounded-lg.border", { hasText: "Group Joiner" }).filter({ hasText: "WhatsApp group" }).filter({ hasText: "{group_link}" }).first().waitFor();
+  if (await page.locator("div.rounded-lg.border", { hasText: "old expired" }).filter({ hasText: "WhatsApp group" }).count()) throw new Error("a backdated member was added to the group");
+});
+await step("Add to WhatsApp group button on a member's profile", async () => {
+  await page.goto(`${BASE}/members`); await page.locator("tr", { hasText: "old expired" }).getByText("old expired").click();
+  await page.getByRole("button", { name: "Add to WhatsApp group" }).click(); await toast(page, "will be added to the group");
+  await page.goto(`${BASE}/whatsapp?tab=log`);
+  await page.locator("div.rounded-lg.border", { hasText: "old expired" }).filter({ hasText: "WhatsApp group" }).first().waitFor();
+});
 await step("Biometric: Add Biometric sends the member to the machine", async () => {
   await page.goto(`${BASE}/attendance/biometric?tab=machines`);
   await page.getByPlaceholder("Machine serial number").fill("SIM-ALPHA-02");

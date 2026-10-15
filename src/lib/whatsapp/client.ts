@@ -39,6 +39,27 @@ export async function disconnect(gymId: string): Promise<void> {
   });
 }
 
+export interface WhatsappGroup {
+  id: string;
+  name: string;
+  size: number;
+  // Only groups where the gym's number is an admin can take new members.
+  isAdmin: boolean;
+}
+
+// Groups the gym's linked number is in.
+export async function getGroups(gymId: string): Promise<WhatsappGroup[]> {
+  const res = await fetch(`${WORKER_URL}/sessions/${gymId}/groups`, {
+    headers,
+    cache: "no-store",
+    signal: AbortSignal.timeout(30000),
+  }).catch(() => null);
+  if (!res) throw new Error("WhatsApp sender is not reachable");
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body.error ?? `Sender replied ${res.status}`);
+  return body.groups;
+}
+
 // Tells the sender there is something new in the queue, which also wakes it
 // if it was asleep. Best effort: the sender checks the queue by itself too.
 export async function nudgeSender(): Promise<void> {

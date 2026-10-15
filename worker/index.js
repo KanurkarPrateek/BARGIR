@@ -217,10 +217,58 @@ async function fetchDocument(url) {
   }
 }
 
+// The digits of a WhatsApp id ("9198…:12@s.whatsapp.net" -> "9198…").
+const idDigits = (id) => String(id ?? "").split(/[:@]/)[0];
+
+// Groups this gym's number is in, and whether it is an admin of each.
+async function listGroups(session) {
+  const me = [idDigits(session.sock.user?.id), idDigits(session.sock.user?.lid)].filter(Boolean);
+  const groups = await session.sock.groupFetchAllParticipating();
+  return Object.values(groups)
+    .map((g) => ({
+      id: g.id,
+      name: g.subject,
+      size: g.participants.length,
+      isAdmin: g.participants.some((p) => p.admin && [p.id, p.jid, p.phoneNumber, p.lid].some((x) => me.includes(idDigits(x)))),
+    }))
+    .sort((a, b) => Number(b.isAdmin) - Number(a.isAdmin) || a.name.localeCompare(b.name));
+}
+
+// Adds the person to the gym's group. If WhatsApp will not let them be added
+// (their privacy settings, or they left recently) they get the invite link.
+async function addToGroup(session, message, jid) {
+  let result;
+  try {
+    [result] = await session.sock.groupParticipantsUpdate(message.groupId, [jid], "add");
+  } catch (error) {
+    if (/not-authorized|forbidden|403/i.test(error.message)) {
+      return markFailed(message.id, "The gym's WhatsApp number is not an admin of the group");
+    }
+    if (/item-not-found|404/i.test(error.message)) {
+      return markFailed(message.id, "The gym's WhatsApp group no longer exists; choose it again");
+    }
+    throw error;
+  }
+  const status = String(result?.status ?? "");
+  let note;
+  if (status === "200") note = "➕ Added to the gym's WhatsApp group";
+  else if (status === "409") note = "Already in the gym's WhatsApp group";
+  else {
+    const code = await session.sock.groupInviteCode(message.groupId);
+    note = message.body.replaceAll("{group_link}", `https://chat.whatsapp.com/${code}`);
+    await session.sock.sendMessage(jid, { text: note });
+  }
+  await db.query(
+    `UPDATE "WhatsappMessage" SET status = 'sent', "sentAt" = now(), error = NULL, body = $2 WHERE id = $1`,
+    [message.id, note]
+  );
+}
+
 async function sendOne(session, message) {
   const jid = toJid(message.phone);
   const [found] = await session.sock.onWhatsApp(jid);
   if (!found?.exists) return markFailed(message.id, "This number is not on WhatsApp");
+  if (message.groupId) return addToGroup(session, message, found.jid);
   const pdf = message.document ? await fetchDocument(message.document) : null;
   await session.sock.sendMessage(
     found.jid,
@@ -252,7 +300,7 @@ async function drainQueue() {
 
       // The oldest waiting message of each connected gym.
       const { rows } = await db.query(
-        `SELECT DISTINCT ON (gym_id) id, gym_id, phone, body, document FROM "WhatsappMessage"
+        `SELECT DISTINCT ON (gym_id) id, gym_id, phone, body, document, "groupId" FROM "WhatsappMessage"
          WHERE status = 'pending' AND gym_id = ANY($1)
          ORDER BY gym_id, "createdAt" ASC`,
         [connected.map(([gymId]) => gymId)]
@@ -328,6 +376,12 @@ http
       if (match && req.method === "POST" && match[2]) {
         await logout(match[1]);
         return json(res, 200, { ok: true });
+      }
+      const groupsMatch = /^\/sessions\/([\w-]+)\/groups$/.exec(url.pathname);
+      if (groupsMatch && req.method === "GET") {
+        const session = sessions.get(groupsMatch[1]);
+        if (session?.state !== "connected") return json(res, 409, { error: "Link the gym's WhatsApp number first" });
+        return json(res, 200, { groups: await listGroups(session) });
       }
       if (url.pathname === "/wake" && req.method === "POST") {
         void drainQueue();

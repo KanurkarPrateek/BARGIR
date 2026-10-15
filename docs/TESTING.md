@@ -29,7 +29,7 @@ Google Chrome. The runner (`tests/run-e2e.sh`):
 | `multi-gym` (17) | Admin creates gyms; one phone = one login; each gym sees only its own members, packages, sales, payments and machines; machines are routed by serial number; public invoices show the right gym; switched-off gyms cannot sign in |
 | `onboarding` (12) | Self sign-up and duplicate phone refused, all six wizard steps, Excel import with per-row problem report (bad phone, unknown package), running memberships and payments imported with no messages, duplicate import skipped, tap-to-claim machine, setup reminder on the dashboard |
 | `daily-flows` (18) | Packages, trainers (phone validation), enquiry → member → subscription → part payment → collect, enquiry marked Joined, Payment Report, PT clients, check-in, WhatsApp welcome/invoice/receipt queued, workflows, offers, invoice page and PDF, every page opens, removed pages are gone |
-| `features` (22) | Universal Search, batches, BackDate member/subscription/enquiry/payment with **no** messages, InActive / Pending Renewal / Dormant lists, staff and staff login, Staff Attendance, expenses and profit, biometric Add → punch → attendance, Block → machine refuses, Unblock, Delete, auto-block switch, BlackList refusing check-in |
+| `features` (24) | Universal Search, batches, BackDate member/subscription/enquiry/payment with **no** messages, InActive / Pending Renewal / Dormant lists, staff and staff login, Staff Attendance, expenses and profit, biometric Add → punch → attendance, Block → machine refuses, Unblock, Delete, auto-block switch, BlackList refusing check-in |
 | `control` (14) | Control Panel against the test app: wrong cluster key reported, cluster health and settings to paste, new gym created on the cluster with a working owner login, duplicate owner phone refused, payment moves the renewal and books 10% commission, suspend blocks sign-in and resume restores it, owner password reset, linking a gym that signed itself up, MRR and capacity, a salesperson sees only their own gyms, commission payout |
 | `front-desk` (6) | Staff login hides monthly revenue and owner menus, owner pages redirect, desk work still works, removing the login locks them out |
 
@@ -109,6 +109,15 @@ Tick each line. *Expected* is what should happen.
 | S3 | Hover a month in the chart; Show as table | Amounts match |
 | S4 | Download Excel | One row per subscription in the period |
 | S5 | Sign in as front desk, open `/analytics` | Sent back to the dashboard |
+
+### WhatsApp group
+
+| # | Do | Expected |
+|---|---|---|
+| WG1 | In WhatsApp, make the gym's number admin of a test group with only you in it; WhatsApp Management → Choose group | The group is listed; groups where the number is not admin are greyed out |
+| WG2 | Save with **Add new members automatically**, add a member with your second number | That number is added to the group (or gets the invite link) |
+| WG3 | BackDate Add Member | Not added |
+| WG4 | Member profile → Add to WhatsApp group | Added; Sent messages shows the result |
 
 ### Staff and expenses
 

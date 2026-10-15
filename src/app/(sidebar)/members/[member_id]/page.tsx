@@ -7,6 +7,7 @@ import { AddMemberToMachines, RemoveMemberFromMachines } from '@/action/biometri
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { AssignPtTrainer } from '@/action/trainer.action'
 import { ResendInvoice } from '@/action/sales.action'
+import { AddMemberToGroup } from '@/action/whatsapp.action'
 import { describeDelivery } from '@/lib/invoice-delivery'
 import { MembershipBadge } from '@/components/custom/membership-badge'
 import { RecordPaymentDialog } from '@/components/custom/record-payment-dialog'
@@ -52,6 +53,14 @@ const MemberProfilePage = ({ params }: { params: any }) => {
     const sendInvoice = async (saleId: string) => {
         try {
             toast.success(describeDelivery(await call(ResendInvoice(saleId))))
+        } catch (error: any) {
+            toast.error(error.message)
+        }
+    }
+
+    const addToGroup = async () => {
+        try {
+            toast.success(await call(AddMemberToGroup(member!.id)))
         } catch (error: any) {
             toast.error(error.message)
         }
@@ -112,6 +121,7 @@ const MemberProfilePage = ({ params }: { params: any }) => {
                     <Link href={`/members/${member.id}/edit`}>
                         <Button variant='outline'>Edit details</Button>
                     </Link>
+                    <Button variant='outline' onClick={addToGroup}>Add to WhatsApp group</Button>
                     <Button variant='ghost' className={member.blacklisted ? '' : 'text-destructive'} onClick={toggleBlacklist}>
                         {member.blacklisted ? 'Remove from BlackList' : 'BlackList'}
                     </Button>

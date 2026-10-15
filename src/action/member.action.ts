@@ -1,5 +1,6 @@
 "use server";
 
+import { queueGroupAdd } from "@/lib/whatsapp/group";
 import { Failed } from "@/lib/action-result";
 import { UserError, safe } from "@/lib/safe-action";
 import prisma, { requireOwnTrainer } from "@/lib/tenant";
@@ -134,6 +135,9 @@ export async function AddMember(data: MemberInput): Promise<MemberResponse | Fai
       }
       if (!data.backdated) await notifyTrainerOfMember(member).catch((error) =>
         console.error("Failed to notify trainer:", error)
+      );
+      if (!data.backdated) await queueGroupAdd(member, { automatic: true }).catch((error) =>
+        console.error("Failed to queue the WhatsApp group add:", error)
       );
 
       return {

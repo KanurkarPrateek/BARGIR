@@ -7,6 +7,8 @@ export interface OutgoingMessage {
   body: string;
   // PDF address; see WhatsappMessage.document.
   document?: string;
+  // WhatsApp group to add the person to; see WhatsappMessage.groupId.
+  groupId?: string;
   dedupeKey?: string;
   workflow_id?: string;
   campaign_id?: string;

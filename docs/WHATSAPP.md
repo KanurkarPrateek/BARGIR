@@ -82,6 +82,21 @@ Type these in a message; each person gets their own values.
 | `{offer}` | In renewal reminders: "🏷️ Renew now at just ₹900 (10% off till 31-10-2026)" when the package has an offer, otherwise nothing |
 | `{package}` / `{price}` / `{offer_price}` / `{discount}` / `{valid_till}` | In offers about a package: its name, normal price, offer price, "10% off", last day |
 
+## The gym's WhatsApp group
+
+**WhatsApp Management → WhatsApp group → Choose group** lists the groups the
+gym's linked number is in. Pick the gym's group (the number must be an **admin**
+there; other groups cannot be chosen) and keep **Add new members automatically** on.
+
+- Every new member is added to the group from the gym's number, once.
+- If their WhatsApp privacy settings do not allow being added (or they left the
+  group recently), they get a message with the group's invite link instead.
+- BackDate members and Excel imports are not added automatically.
+- **Add to WhatsApp group** on a member's profile adds anyone by hand, for
+  example existing members.
+- Each attempt shows in **Sent messages** as *WhatsApp group*: "Added to the gym's
+  WhatsApp group", "Already in the group", or the invite message that was sent.
+
 ## Linking the gym's number
 
 1. **WhatsApp Management** → a QR code appears.

@@ -4,7 +4,9 @@ import { Failed } from "@/lib/action-result";
 import { UserError, safe } from "@/lib/safe-action";
 import prisma, { currentGymName, requireGymId , requireOwner } from "@/lib/tenant";
 import { getRecipients } from "@/lib/whatsapp/audience";
-import { Connection, disconnect, getConnection, nudgeSender } from "@/lib/whatsapp/client";
+import { Connection, disconnect, getConnection, getGroups, nudgeSender, type WhatsappGroup } from "@/lib/whatsapp/client";
+import { queueGroupAdd } from "@/lib/whatsapp/group";
+import base from "@/lib/prisma";
 import {
   CampaignAudience,
   WorkflowTrigger,
@@ -193,6 +195,51 @@ export async function GetCampaigns(): Promise<CampaignResponse[]> {
   });
 }
 
+// ---------- Gym WhatsApp group ----------
+
+export interface GroupSettings {
+  groupId: string | null;
+  groupName: string | null;
+  autoAdd: boolean;
+}
+
+export async function GetGroupSettings(): Promise<GroupSettings> {
+  const gym = await base.gym.findUnique({ where: { id: await requireGymId() } });
+  return { groupId: gym?.whatsappGroupId ?? null, groupName: gym?.whatsappGroupName ?? null, autoAdd: gym?.autoAddToGroup ?? false };
+}
+
+export async function GetWhatsappGroups(): Promise<WhatsappGroup[] | Failed> {
+  return safe(async () => {
+    await requireOwner();
+    try {
+      return await getGroups(await requireGymId());
+    } catch (error: any) {
+      throw new UserError(error.message);
+    }
+  });
+}
+
+export async function SaveGroupSettings(groupId: string | null, groupName: string | null, autoAdd: boolean): Promise<void | Failed> {
+  return safe(async () => {
+    await requireOwner();
+    await base.gym.update({
+      where: { id: await requireGymId() },
+      data: { whatsappGroupId: groupId, whatsappGroupName: groupId ? groupName : null, autoAddToGroup: !!groupId && autoAdd },
+    });
+  });
+}
+
+// "Add to WhatsApp group" on a member's profile.
+export async function AddMemberToGroup(memberId: string): Promise<string | Failed> {
+  return safe(async () => {
+    const member = await prisma.member.findUnique({ where: { id: memberId } });
+    if (!member) throw new UserError("Member not found");
+    const result = await queueGroupAdd(member, { automatic: false });
+    if (result === "no-group") throw new UserError("Choose the gym's group first under WhatsApp Management");
+    return `${member.name} will be added to the group`;
+  });
+}
+
 // ---------- Message log ----------
 
 export async function GetMessages(): Promise<MessageResponse[]> {
@@ -212,7 +259,7 @@ export async function GetMessages(): Promise<MessageResponse[]> {
     document: message.document,
     status: message.status,
     error: message.error,
-    source: message.workflow?.name ?? message.campaign?.title ?? "Manual",
+    source: message.groupId ? "WhatsApp group" : message.workflow?.name ?? message.campaign?.title ?? "Manual",
     createdAt: message.createdAt,
     sentAt: message.sentAt,
   }));

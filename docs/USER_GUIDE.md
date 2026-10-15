@@ -184,7 +184,7 @@ Each row has a **call** button, the member's **biometric** status (or an
 
 **Member profile** — everything about one member: membership and days left,
 dues, total paid, visits, trainer, batch, biometric status, all plans with
-**Collect**, **Invoice**, **PDF** and **Send invoice**, full payment history, and
+**Collect**, **Invoice**, **PDF** and **Send invoice**, **Add to WhatsApp group**, full payment history, and
 attendance. **BlackList** (owner) asks for a reason, refuses check-in and
 removes them from the machine.
 

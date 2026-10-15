@@ -272,6 +272,10 @@ model WhatsappMessage {
   // Address of a PDF to send with the message (the invoice); the body
   // becomes its caption.
   document    String?
+  // When set, this row means "add this person to that WhatsApp group"; the
+  // body is the invite message sent instead if their privacy settings do not
+  // allow being added ({group_link} is filled in by the sender).
+  groupId     String?
   status      MessageStatus     @default(pending)
   error       String?
   dedupeKey   String?           @unique
@@ -352,6 +356,11 @@ model Gym {
   // Remove members from the biometric machines when their membership ends,
   // and add them back when they renew.
   autoBlockExpired Boolean @default(false)
+  // The gym's WhatsApp group (its linked number must be an admin there) and
+  // whether new members are added to it automatically.
+  whatsappGroupId   String?
+  whatsappGroupName String?
+  autoAddToGroup    Boolean @default(false)
   // False until the owner finishes (or skips) the setup wizard.
   setupDone        Boolean @default(false)
   // Small image stored as a data URL (shrunk in the browser before upload),

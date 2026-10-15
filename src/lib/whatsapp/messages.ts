@@ -148,6 +148,15 @@ Keep shining and keep lifting! 🏋️
 With love,
 Team ${gym} ❤️`;
 
+// Sent when someone's privacy settings do not let the gym add them to its
+// group. {group_link} is filled in by the sender.
+export const groupInvite = (name: string, group: string, gym: string) => `Hi ${name} 👋
+
+Welcome to *${gym}*! 🎉
+Join our WhatsApp group *${group}* for updates, timings and offers 💪
+
+👉 {group_link}`;
+
 // ---------- notices to trainers ----------
 
 export const trainerNewEnquiry = (gym: string, lead: { name: string; phone: string; message?: string | null; followupDate?: string | null }) =>

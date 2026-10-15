@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import React, { Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import ConnectionCard from './_components/connection-card'
+import GroupCard from './_components/group-card'
 import MessageLog from './_components/message-log'
 import OffersTab from './_components/offers-tab'
 import WorkflowsTab from './_components/workflows-tab'
@@ -21,6 +22,7 @@ function WhatsappManagement() {
             </div>
             <Separator />
             <ConnectionCard />
+            <GroupCard />
             <Tabs defaultValue={tab}>
                 <TabsList>
                     <TabsTrigger value='workflows'>Workflows</TabsTrigger>
