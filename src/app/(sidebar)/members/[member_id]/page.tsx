@@ -232,6 +232,9 @@ const MemberProfilePage = ({ params }: { params: any }) => {
                                     <Link href={`/invoices/${sale.id}`} target='_blank'>
                                         <Button size='sm' variant='ghost'>Invoice</Button>
                                     </Link>
+                                    <a href={`/invoices/${sale.id}/pdf?download`}>
+                                        <Button size='sm' variant='ghost'>PDF</Button>
+                                    </a>
                                     <Button size='sm' variant='ghost' onClick={() => sendInvoice(sale.id)}>Send invoice</Button>
                                 </span>
                             </div>

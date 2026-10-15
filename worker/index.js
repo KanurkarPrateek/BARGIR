@@ -205,11 +205,29 @@ const markFailed = (id, error) =>
     String(error).slice(0, 300),
   ]);
 
+async function fetchDocument(url) {
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(30000) });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const name = /filename="([^"]+)"/.exec(res.headers.get("content-disposition") ?? "")?.[1];
+    return { buffer: Buffer.from(await res.arrayBuffer()), fileName: name ?? "Invoice.pdf" };
+  } catch (error) {
+    console.warn(`Could not fetch ${url}: ${error.message}; sending text only`);
+    return null;
+  }
+}
+
 async function sendOne(session, message) {
   const jid = toJid(message.phone);
   const [found] = await session.sock.onWhatsApp(jid);
   if (!found?.exists) return markFailed(message.id, "This number is not on WhatsApp");
-  await session.sock.sendMessage(found.jid, { text: message.body });
+  const pdf = message.document ? await fetchDocument(message.document) : null;
+  await session.sock.sendMessage(
+    found.jid,
+    // The invoice goes as a PDF with the message as its caption. If the PDF
+    // cannot be fetched the text still goes; it carries the invoice link.
+    pdf ? { document: pdf.buffer, mimetype: "application/pdf", fileName: pdf.fileName, caption: message.body } : { text: message.body }
+  );
   await db.query(
     `UPDATE "WhatsappMessage" SET status = 'sent', "sentAt" = now(), error = NULL WHERE id = $1`,
     [message.id]
@@ -234,7 +252,7 @@ async function drainQueue() {
 
       // The oldest waiting message of each connected gym.
       const { rows } = await db.query(
-        `SELECT DISTINCT ON (gym_id) id, gym_id, phone, body FROM "WhatsappMessage"
+        `SELECT DISTINCT ON (gym_id) id, gym_id, phone, body, document FROM "WhatsappMessage"
          WHERE status = 'pending' AND gym_id = ANY($1)
          ORDER BY gym_id, "createdAt" ASC`,
         [connected.map(([gymId]) => gymId)]

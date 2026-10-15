@@ -16,6 +16,9 @@ const Page = ({ params }: { params: any }) => {
             <div className='flex items-center justify-between'>
                 <h1 className='font-bold mb-2'>Sales Invoice</h1>
                 <div className='mb-2 flex gap-2'>
+                    <a href={`/invoices/${sale_id}/pdf?download`}>
+                        <Button className="bg-blue-600 hover:bg-blue-700 text-white">Download PDF</Button>
+                    </a>
                     <Button
                         onClick={reactToPrintFn}
                         className="bg-blue-600 hover:bg-blue-700 text-white"

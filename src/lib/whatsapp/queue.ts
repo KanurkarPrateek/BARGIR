@@ -5,6 +5,8 @@ export interface OutgoingMessage {
   name: string;
   phone: bigint;
   body: string;
+  // PDF address; see WhatsappMessage.document.
+  document?: string;
   dedupeKey?: string;
   workflow_id?: string;
   campaign_id?: string;

@@ -175,11 +175,13 @@ export async function runSaleWorkflows(
     expiry_date: sale.endDate,
     invoice_link: `${await appUrl()}/invoices/${sale.id}`,
   };
+  const document = `${await appUrl()}/invoices/${sale.id}/pdf`;
   return enqueue(
     workflows.map((workflow) => ({
       name: sale.member.name,
       phone: sale.member.phone,
       body: renderTemplate(workflow.template, values),
+      document,
       dedupeKey: key ? `${workflow.id}:${key}` : undefined,
       workflow_id: workflow.id,
     }))

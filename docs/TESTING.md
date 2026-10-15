@@ -28,7 +28,7 @@ Google Chrome. The runner (`tests/run-e2e.sh`):
 |---|---|
 | `multi-gym` (17) | Admin creates gyms; one phone = one login; each gym sees only its own members, packages, sales, payments and machines; machines are routed by serial number; public invoices show the right gym; switched-off gyms cannot sign in |
 | `onboarding` (12) | Self sign-up and duplicate phone refused, all six wizard steps, Excel import with per-row problem report (bad phone, unknown package), running memberships and payments imported with no messages, duplicate import skipped, tap-to-claim machine, setup reminder on the dashboard |
-| `daily-flows` (17) | Packages, trainers (phone validation), enquiry → member → subscription → part payment → collect, enquiry marked Joined, Payment Report, PT clients, check-in, WhatsApp welcome/invoice/receipt queued, workflows, offers, invoice page, every page opens, removed pages are gone |
+| `daily-flows` (18) | Packages, trainers (phone validation), enquiry → member → subscription → part payment → collect, enquiry marked Joined, Payment Report, PT clients, check-in, WhatsApp welcome/invoice/receipt queued, workflows, offers, invoice page and PDF, every page opens, removed pages are gone |
 | `features` (22) | Universal Search, batches, BackDate member/subscription/enquiry/payment with **no** messages, InActive / Pending Renewal / Dormant lists, staff and staff login, Staff Attendance, expenses and profit, biometric Add → punch → attendance, Block → machine refuses, Unblock, Delete, auto-block switch, BlackList refusing check-in |
 | `front-desk` (6) | Staff login hides monthly revenue and owner menus, owner pages redirect, desk work still works, removing the login locks them out |
 
@@ -87,6 +87,7 @@ Tick each line. *Expected* is what should happen.
 | C7 | Payment Report → Today | Cash ₹400, UPI ₹600 |
 | C8 | View Subscriptions → delete that sale | Refused: payments exist |
 | C9 | Open the invoice link signed out | Gym logo, address and GST printed |
+| C10 | Download PDF on the invoice (or PDF on the member profile) | A one-page PDF with ₹ amounts, payments received, and PAID when nothing is due |
 
 ### Member lists and search
 
@@ -134,7 +135,7 @@ uses your own number as the member's number.
 |---|---|---|
 | W1 | WhatsApp Management → Send test to your number | "Test message from your gym software ✅" |
 | W2 | Add Enquiry | Welcome message with your gym's name |
-| W3 | Add Subscription with part payment | Invoice message with plan, paid, balance, link |
+| W3 | Add Subscription with part payment | Invoice message with plan, paid, balance, link, and the invoice PDF attached |
 | W4 | Collect the balance | Receipt message |
 | W5 | Add Subscription whose end date is 3 days away (BackDate Renew Subscription with the right start date), then Workflows → **Run now** | "…ends on <date>" reminder (runs only 9 AM–9 PM) |
 | W6 | Same with an end date of yesterday → Run now | "…ended on <date>" message |

@@ -269,6 +269,9 @@ model WhatsappMessage {
   name        String
   phone       BigInt
   body        String
+  // Address of a PDF to send with the message (the invoice); the body
+  // becomes its caption.
+  document    String?
   status      MessageStatus     @default(pending)
   error       String?
   dedupeKey   String?           @unique

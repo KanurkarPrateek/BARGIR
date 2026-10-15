@@ -114,6 +114,20 @@ await step("invoice page renders", async () => {
   const href = await page.getByRole("link", { name: "Invoice" }).first().getAttribute("href");
   await page.goto(BASE + href); await page.getByText("Amit Shah").first().waitFor();
 });
+await step("invoice PDF: downloads, and is attached to the WhatsApp invoice", async () => {
+  const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Download PDF" }).click()]);
+  if (!/^Invoice-INV-[0-9A-F]{8}\.pdf$/.test(download.suggestedFilename())) throw new Error(download.suggestedFilename());
+  const res = await page.request.get(page.url() + "/pdf");
+  const bytes = await res.body();
+  if (res.headers()["content-type"] !== "application/pdf" || bytes.subarray(0, 5).toString() !== "%PDF-") throw new Error("not a PDF");
+  if (bytes.length > 200_000) throw new Error(`PDF too big: ${bytes.length} bytes`);
+  // Any invoice email sent so far carries the PDF.
+  const { existsSync, readFileSync } = await import("node:fs");
+  const emails = existsSync("tests/e2e/emails.jsonl") ? readFileSync("tests/e2e/emails.jsonl", "utf8").trim().split("\n").filter(Boolean).map((l) => JSON.parse(l)) : [];
+  for (const e of emails) if (!/^Invoice-INV-.*\.pdf$/.test(e.attachments?.[0]?.filename ?? "")) throw new Error("invoice email without the PDF");
+  await page.goto(`${BASE}/whatsapp?tab=log`);
+  await page.locator("div.rounded-lg.border", { hasText: "Amit" }).filter({ hasText: /Thank you for choosing/ }).getByText("📎 Invoice PDF attached").first().waitFor();
+});
 await step("every main page opens without crashing", async () => {
   for (const p of ["/dashboard", "/members", "/members/batches", "/sales", "/sales/followups", "/enquiries/followups", "/members/birthdays", "/tools", "/attendance/history", "/staff-attendance", "/backdate", "/expenses", "/staff", "/settings", "/sales/pending-payments"]) {
     const r = await page.goto(BASE + p);

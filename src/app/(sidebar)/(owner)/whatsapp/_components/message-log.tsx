@@ -48,6 +48,7 @@ const MessageLog = () => {
                         <Badge variant={VARIANTS[message.status]}>{LABELS[message.status]}</Badge>
                     </div>
                     <p className='bg-muted rounded-md px-3 py-2 text-sm whitespace-pre-wrap'>{message.body}</p>
+                    {message.document && <a href={message.document} target='_blank' className='inline-block text-sm underline'>📎 Invoice PDF attached</a>}
                     {message.error && <p className='text-destructive text-sm'>{message.error}</p>}
                 </div>
             ))}

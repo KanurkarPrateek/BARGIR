@@ -4,6 +4,7 @@ import base from "@/lib/prisma";
 import prisma from "@/lib/tenant";
 import { appUrl } from "@/lib/app-url";
 import { rupees, saleDue } from "@/lib/membership";
+import { buildInvoicePdf } from "@/lib/invoice-pdf";
 
 const API_URL = process.env.RESEND_API_URL ?? "https://api.resend.com/emails";
 
@@ -40,7 +41,7 @@ export async function sendInvoiceEmail(saleId: string): Promise<EmailResult> {
   <h2 style="margin:0 0 4px">${escapeHtml(gymName)}</h2>
   <p style="margin:0 0 20px;color:#666">Invoice INV-${sale.id.slice(0, 8).toUpperCase()}</p>
   <p>Hi ${escapeHtml(sale.member.name)},</p>
-  <p>Thank you for choosing ${escapeHtml(gymName)}. Here are the details of your plan.</p>
+  <p>Thank you for choosing ${escapeHtml(gymName)}. Your invoice is attached as a PDF; the details are below.</p>
   <table style="border-collapse:collapse;margin:16px 0">
     ${row("Plan", sale.service.name)}
     ${row("Valid", `${sale.startDate} to ${sale.endDate}`)}
@@ -52,6 +53,7 @@ export async function sendInvoiceEmail(saleId: string): Promise<EmailResult> {
   <p style="color:#666;font-size:13px;margin-top:24px">${[gym?.address, gym?.phone ? `+91 ${gym.phone}` : null].filter(Boolean).map((part) => escapeHtml(String(part))).join(" · ")}</p>
 </div>`;
 
+  const pdf = await buildInvoicePdf(sale.id).catch(() => null);
   try {
     const res = await fetch(API_URL, {
       method: "POST",
@@ -63,6 +65,7 @@ export async function sendInvoiceEmail(saleId: string): Promise<EmailResult> {
         reply_to: isEmail(gym?.email) ? gym.email : undefined,
         subject: `Your invoice from ${gymName}`,
         html,
+        attachments: pdf ? [{ filename: pdf.fileName, content: Buffer.from(pdf.bytes).toString("base64") }] : undefined,
       }),
       signal: AbortSignal.timeout(15000),
     });

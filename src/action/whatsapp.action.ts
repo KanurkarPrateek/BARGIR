@@ -47,6 +47,7 @@ export interface MessageResponse {
   name: string;
   phone: string;
   body: string;
+  document: string | null;
   status: MessageStatus;
   error: string | null;
   source: string;
@@ -208,6 +209,7 @@ export async function GetMessages(): Promise<MessageResponse[]> {
     name: message.name,
     phone: message.phone.toString(),
     body: message.body,
+    document: message.document,
     status: message.status,
     error: message.error,
     source: message.workflow?.name ?? message.campaign?.title ?? "Manual",

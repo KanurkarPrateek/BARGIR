@@ -184,7 +184,7 @@ Each row has a **call** button, the member's **biometric** status (or an
 
 **Member profile** — everything about one member: membership and days left,
 dues, total paid, visits, trainer, batch, biometric status, all plans with
-**Collect**, **Invoice** and **Send invoice**, full payment history, and
+**Collect**, **Invoice**, **PDF** and **Send invoice**, full payment history, and
 attendance. **BlackList** (owner) asks for a reason, refuses check-in and
 removes them from the machine.
 
@@ -214,8 +214,9 @@ status (Open → Trial → Joined / Lost) or the trainer right in the list.
 **Add Subscription** — pick the member and the package; the price, end date
 and balance are worked out for you. Enter what was paid now (0 if paying
 later) and how (cash, UPI, card, bank transfer). For PT packages, pick the
-trainer. After saving, the invoice goes to the member on WhatsApp (and email,
-if they have one).
+trainer. After saving, the invoice goes to the member on WhatsApp as a PDF (and
+by email with the PDF attached, if they have an email). The invoice page also has
+**Download PDF**.
 
 **View Subscriptions** — every sale. A sale with payments on it cannot be
 deleted until the payments are removed from the member's Payments tab.

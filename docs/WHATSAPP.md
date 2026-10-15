@@ -38,6 +38,10 @@ them without messaging real members by mistake.
 | Invoice when a plan is sold | Right after a subscription is added | The member |
 | Receipt when a payment is collected | Right after a balance payment dated today | The member |
 
+The invoice and receipt messages arrive with the **invoice as a PDF** attached
+(the message text is its caption). If the PDF cannot be fetched, the text still
+goes, with the invoice link.
+
 Trainers additionally get: a message when an enquiry or member is assigned to
 them, and one daily list of the enquiries they must follow up.
 
