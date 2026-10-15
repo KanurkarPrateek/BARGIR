@@ -26,7 +26,7 @@ Google Chrome. The runner (`tests/run-e2e.sh`):
 
 | Suite | What it proves |
 |---|---|
-| `multi-gym` (17) | Admin creates gyms; one phone = one login; each gym sees only its own members, packages, sales, payments and machines; machines are routed by serial number; public invoices show the right gym; switched-off gyms cannot sign in |
+| `multi-gym` (18) | Admin creates gyms; one phone = one login; each gym sees only its own members, packages, sales, payments and machines; machines are routed by serial number; public invoices show the right gym; switched-off gyms cannot sign in |
 | `onboarding` (12) | Self sign-up and duplicate phone refused, all six wizard steps, Excel import with per-row problem report (bad phone, unknown package), running memberships and payments imported with no messages, duplicate import skipped, tap-to-claim machine, setup reminder on the dashboard |
 | `daily-flows` (18) | Packages, trainers (phone validation), enquiry → member → subscription → part payment → collect, enquiry marked Joined, Payment Report, PT clients, check-in, WhatsApp welcome/invoice/receipt queued, workflows, offers, invoice page and PDF, every page opens, removed pages are gone |
 | `features` (24) | Universal Search, batches, BackDate member/subscription/enquiry/payment with **no** messages, InActive / Pending Renewal / Dormant lists, staff and staff login, Staff Attendance, expenses and profit, biometric Add → punch → attendance, Block → machine refuses, Unblock, Delete, auto-block switch, BlackList refusing check-in |
@@ -89,6 +89,7 @@ Tick each line. *Expected* is what should happen.
 | C8 | View Subscriptions → delete that sale | Refused: payments exist |
 | C9 | Open the invoice link signed out | Gym logo, address and GST printed |
 | C10 | Download PDF on the invoice (or PDF on the member profile) | A one-page PDF with ₹ amounts, payments received, and PAID when nothing is due |
+| C11 | Gym Settings → Choose image (a coloured logo) → Save; open an invoice and its PDF | Header band, table header and Balance Due in the logo's colour; text readable on it |
 
 ### Member lists and search
 

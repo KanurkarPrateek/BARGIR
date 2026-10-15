@@ -1,4 +1,5 @@
 'use client'
+import { brandColors, DEFAULT_BRAND, dominantColor, normalizeHex } from '@/lib/brand'
 import { call } from '@/lib/action-result'
 import { ChangeMyPassword, GetGymProfile, GymProfile, UpdateGymProfile } from '@/action/staff.action'
 import { Button } from '@/components/ui/button'
@@ -13,13 +14,15 @@ import { toast } from 'sonner'
 const LOGO_MAX_PX = 256
 
 const SettingsPage = () => {
-    const [profile, setProfile] = useState<GymProfile>({ name: '', address: '', phone: '', email: '', gstin: '', invoiceTerms: '', logo: '' })
+    const [profile, setProfile] = useState<GymProfile>({ name: '', address: '', phone: '', email: '', gstin: '', invoiceTerms: '', logo: '', brandColor: '' })
     const [current, setCurrent] = useState('')
     const [next, setNext] = useState('')
     const logoInput = useRef<HTMLInputElement>(null)
+    // Changes made before the saved details arrive would be overwritten.
+    const [loaded, setLoaded] = useState(false)
 
     useEffect(() => {
-        GetGymProfile().then((data) => data && setProfile(data))
+        GetGymProfile().then((data) => { if (data) setProfile(data); setLoaded(true) })
     }, [])
 
     const field = (key: keyof GymProfile) => ({
@@ -36,8 +39,12 @@ const SettingsPage = () => {
             const canvas = document.createElement('canvas')
             canvas.width = Math.round(image.width * scale)
             canvas.height = Math.round(image.height * scale)
-            canvas.getContext('2d')!.drawImage(image, 0, 0, canvas.width, canvas.height)
-            setProfile((current) => ({ ...current, logo: canvas.toDataURL('image/png') }))
+            const context = canvas.getContext('2d')!
+            context.drawImage(image, 0, 0, canvas.width, canvas.height)
+            // The logo's main colour becomes the brand colour for invoices.
+            const picked = dominantColor(context.getImageData(0, 0, canvas.width, canvas.height).data)
+            setProfile((current) => ({ ...current, logo: canvas.toDataURL('image/png'), brandColor: picked ?? current.brandColor }))
+            if (picked) toast.success('Brand colour picked from your logo', { description: 'Change it below if you like. Remember to Save.' })
             URL.revokeObjectURL(image.src)
         }
         image.onerror = () => toast.error('That file is not an image')
@@ -91,8 +98,20 @@ const SettingsPage = () => {
                                 className='hidden'
                                 onChange={(e) => e.target.files?.[0] && chooseLogo(e.target.files[0])}
                             />
-                            <Button variant='outline' onClick={() => logoInput.current?.click()}>Choose image</Button>
+                            <Button variant='outline' disabled={!loaded} onClick={() => logoInput.current?.click()}>Choose image</Button>
                             {profile.logo && <Button variant='ghost' onClick={() => setProfile({ ...profile, logo: '' })}>Remove</Button>}
+                        </div>
+                    </div>
+                    <div className='space-y-2'>
+                        <Label htmlFor='brand-color'>Brand colour <span className='text-muted-foreground font-normal'>(used on invoices)</span></Label>
+                        <div className='flex flex-wrap items-center gap-3'>
+                            <input id='brand-color' type='color' className='h-9 w-14 cursor-pointer rounded-md border bg-transparent p-1' value={normalizeHex(profile.brandColor) ?? DEFAULT_BRAND} onChange={(e) => setProfile({ ...profile, brandColor: e.target.value })} />
+                            <Input className='w-32 font-mono' placeholder={DEFAULT_BRAND} value={profile.brandColor} onChange={(e) => setProfile({ ...profile, brandColor: e.target.value })} />
+                            {(() => {
+                                const c = brandColors(profile.brandColor)
+                                return <span className='rounded-md px-3 py-1.5 text-xs font-semibold tracking-widest' style={{ background: c.brand, color: c.onBrand }}>INVOICE</span>
+                            })()}
+                            {profile.brandColor && <Button variant='ghost' size='sm' onClick={() => setProfile({ ...profile, brandColor: '' })}>Default</Button>}
                         </div>
                     </div>
                     <div className='space-y-2'><Label>Gym name</Label><Input {...field('name')} /></div>

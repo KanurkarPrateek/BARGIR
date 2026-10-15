@@ -366,6 +366,8 @@ model Gym {
   // Small image stored as a data URL (shrunk in the browser before upload),
   // so no file storage is needed.
   logo      String?
+  // Main colour for invoices ("#rrggbb"); picked from the logo, editable.
+  brandColor String?
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

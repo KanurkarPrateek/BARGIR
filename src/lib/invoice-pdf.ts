@@ -5,6 +5,7 @@ import { PDFDocument, rgb, StandardFonts, type PDFFont } from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
 import base from "@/lib/prisma";
 import { paymentModeLabel, rupees, saleDue } from "@/lib/membership";
+import { brandColors } from "@/lib/brand";
 
 // A font with the ₹ sign, fetched once per server and cached. Without it
 // (no internet) the PDF falls back to a built-in font and "Rs.".
@@ -29,11 +30,15 @@ export const invoiceNumber = (saleId: string) => `INV-${saleId.slice(0, 8).toUpp
 const DEFAULT_TERMS =
   "Membership is non-transferable and non-refundable. The gym reserves the right to modify the terms of membership. Members must comply with all gym rules and regulations.";
 
+const GREY = rgb(0.42, 0.42, 0.45);
+const LINE = rgb(0.9, 0.9, 0.9);
 const INK = rgb(0.07, 0.07, 0.07);
-const MUTED = rgb(0.4, 0.4, 0.4);
-const LINE = rgb(0.85, 0.85, 0.85);
-const GREEN = rgb(0.09, 0.5, 0.24);
+const GREEN = rgb(0.08, 0.5, 0.24);
+const AMBER = rgb(0.75, 0.42, 0.02);
+const color = (hex: string) => rgb(parseInt(hex.slice(1, 3), 16) / 255, parseInt(hex.slice(3, 5), 16) / 255, parseInt(hex.slice(5, 7), 16) / 255);
 
+// Same layout as the invoice page: a band in the gym's brand colour with its
+// logo and details, then who it is for, the plan, totals, payments, terms.
 export async function buildInvoicePdf(saleId: string): Promise<{ bytes: Uint8Array; fileName: string } | null> {
   const sale = await base.sales.findUnique({
     where: { id: saleId },
@@ -41,6 +46,8 @@ export async function buildInvoicePdf(saleId: string): Promise<{ bytes: Uint8Arr
   });
   if (!sale) return null;
   const gym = await base.gym.findUnique({ where: { id: sale.gym_id } });
+  const c = brandColors(gym?.brandColor);
+  const BRAND = color(c.brand), ON_BRAND = color(c.onBrand), SOFT = color(c.soft), ACCENT = color(c.ink);
 
   const pdf = await PDFDocument.create();
   pdf.setTitle(`Invoice ${invoiceNumber(sale.id)}`);
@@ -60,14 +67,14 @@ export async function buildInvoicePdf(saleId: string): Promise<{ bytes: Uint8Arr
   const money = (n: number) => clean(rupees(n));
 
   const page = pdf.addPage([595.28, 841.89]); // A4
-  const { width } = page.getSize();
-  const M = 48;
-  let y = 841.89 - M;
+  const { width, height } = page.getSize();
+  const M = 44;
 
-  const write = (text: string, x: number, at: number, size = 10, font = regular, color = INK) =>
-    page.drawText(clean(text), { x, y: at, size, font, color });
-  const writeRight = (text: string, right: number, at: number, size = 10, font = regular, color = INK) =>
-    write(text, right - font.widthOfTextAtSize(clean(text), size), at, size, font, color);
+  const write = (text: string, x: number, at: number, size = 10, font = regular, fill = INK) =>
+    page.drawText(clean(text), { x, y: at, size, font, color: fill });
+  const writeRight = (text: string, right: number, at: number, size = 10, font = regular, fill = INK) =>
+    write(text, right - font.widthOfTextAtSize(clean(text), size), at, size, font, fill);
+  const spaced = (text: string) => text.split("").join(" ");
   const wrap = (text: string, size: number, maxWidth: number, font = regular) => {
     const lines: string[] = [];
     for (const para of clean(text).split(/\n/)) {
@@ -83,109 +90,129 @@ export async function buildInvoicePdf(saleId: string): Promise<{ bytes: Uint8Arr
     }
     return lines;
   };
-  const rule = (at: number) => page.drawLine({ start: { x: M, y: at }, end: { x: width - M, y: at }, thickness: 0.8, color: LINE });
+  const rule = (at: number, from = M, to = width - M) => page.drawLine({ start: { x: from, y: at }, end: { x: to, y: at }, thickness: 0.7, color: LINE });
 
-  // ---- header: gym on the left, invoice number on the right
-  let left = y;
+  // ---- brand band
   const logo = await embedLogo(pdf, gym?.logo);
-  if (logo) {
-    const h = 48, w = Math.min(160, (logo.width / logo.height) * h);
-    page.drawImage(logo, { x: M, y: left - h, width: w, height: h });
-    left -= h + 12;
-  }
-  write(gym?.name ?? "", M, left - 14, 15, bold);
-  left -= 32;
-  const gymLines = [
-    ...(gym?.address ? wrap(gym.address, 9.5, 280) : []),
+  const logoBox = 62;
+  const textX = logo ? M + logoBox + 16 : M;
+  const info = [
+    ...(gym?.address ? wrap(gym.address, 9, 270) : []),
     gym?.phone ? `Contact: +91 ${gym.phone}` : null,
     gym?.email || null,
     gym?.gstin ? `GSTIN: ${gym.gstin}` : null,
   ].filter(Boolean) as string[];
-  for (const line of gymLines) {
-    write(line, M, left, 9.5, regular, MUTED);
-    left -= 13;
+  const leftHeight = Math.max(logo ? logoBox : 0, 22 + info.length * 12);
+  const bandHeight = Math.max(leftHeight, 64) + 52;
+  page.drawRectangle({ x: 0, y: height - bandHeight, width, height: bandHeight, color: BRAND });
+  const top = height - 26;
+  if (logo) {
+    page.drawRectangle({ x: M, y: top - logoBox, width: logoBox, height: logoBox, color: rgb(1, 1, 1) });
+    const inner = logoBox - 10;
+    const scale = Math.min(inner / logo.width, inner / logo.height);
+    const w = logo.width * scale, h = logo.height * scale;
+    page.drawImage(logo, { x: M + (logoBox - w) / 2, y: top - logoBox + (logoBox - h) / 2, width: w, height: h });
   }
-  writeRight("INVOICE", width - M, y - 20, 22, bold);
-  writeRight(`#${invoiceNumber(sale.id)}`, width - M, y - 38, 10, regular, MUTED);
-  writeRight(`Date: ${sale.startDate}`, width - M, y - 52, 10, regular, MUTED);
-  const due = saleDue(sale);
-  if (due <= 0) {
-    const label = "PAID", size = 12, w = bold.widthOfTextAtSize(label, size) + 16;
-    page.drawRectangle({ x: width - M - w, y: y - 82, width: w, height: 20, borderColor: GREEN, borderWidth: 1.2 });
-    write(label, width - M - w + 8, y - 76, size, bold, GREEN);
-  }
-  y = Math.min(left, y - 90) - 14;
+  write(gym?.name ?? "", textX, top - 15, 16, bold, ON_BRAND);
+  info.forEach((line, i) => write(line, textX, top - 32 - i * 12, 9, regular, ON_BRAND));
+  writeRight(spaced("INVOICE"), width - M, top - 18, 20, bold, ON_BRAND);
+  writeRight(`#${invoiceNumber(sale.id)}`, width - M, top - 36, 9.5, regular, ON_BRAND);
+  writeRight(`Date: ${sale.startDate}`, width - M, top - 49, 9.5, regular, ON_BRAND);
+  let y = height - bandHeight - 34;
 
-  // ---- member
-  write("To,", M, y, 10, regular, MUTED);
-  y -= 15;
-  write(sale.member.name, M, y, 11.5, bold);
+  // ---- billed to + status
+  write("BILLED TO", M, y, 8, bold, ACCENT);
+  const total = sale.amount - sale.discount;
+  const due = Math.max(0, saleDue(sale));
+  const status = due === 0 ? "PAID" : `BALANCE DUE ${money(due)}`;
+  const statusColor = due === 0 ? GREEN : AMBER;
+  const sw = bold.widthOfTextAtSize(clean(status), 9) + 20;
+  page.drawRectangle({ x: width - M - sw, y: y - 8, width: sw, height: 20, borderColor: statusColor, borderWidth: 1.4 });
+  writeRight(status, width - M - 10, y - 1.5, 9, bold, statusColor);
+  y -= 17;
+  write(sale.member.name, M, y, 12.5, bold);
   y -= 14;
-  for (const line of sale.member.address ? wrap(sale.member.address, 10, 300) : []) {
-    write(line, M, y);
-    y -= 13;
+  for (const line of [
+    sale.member.memberCode ? `Member ID: ${sale.member.memberCode}` : null,
+    `Phone: ${sale.member.phone}`,
+    ...(sale.member.address ? wrap(sale.member.address, 9.5, 300) : []),
+  ].filter(Boolean) as string[]) {
+    write(line, M, y, 9.5, regular, GREY);
+    y -= 12.5;
   }
-  write(`Phone: ${sale.member.phone}`, M, y);
-  y -= 30;
+  y -= 18;
 
-  const section = (title: string) => {
-    write(title, M, y, 12.5, bold);
-    y -= 8;
-    rule(y);
-    y -= 18;
-  };
-  const row = (label: string, value: string, strong = false, size = 10.5) => {
-    write(label, M, y, size, strong ? bold : regular);
-    writeRight(value, width - M, y, size, strong ? bold : regular);
-    y -= size + 9;
-  };
-
-  section("Membership Details");
-  row("Service", `${sale.service.name} membership`, true);
-  row("Period", `${sale.startDate} to ${sale.endDate}`);
+  // ---- items
+  const periodX = M + 250;
+  page.drawRectangle({ x: M, y: y - 7, width: width - 2 * M, height: 22, color: SOFT });
+  write("DESCRIPTION", M + 10, y, 8, bold, ACCENT);
+  write("PERIOD", periodX, y, 8, bold, ACCENT);
+  writeRight("AMOUNT", width - M - 10, y, 8, bold, ACCENT);
+  y -= 26;
+  write(`${sale.service.name} membership`, M + 10, y, 10.5, bold);
+  write(`${sale.startDate} to ${sale.endDate}`, periodX, y, 10, regular, GREY);
+  writeRight(money(sale.amount), width - M - 10, y, 10.5);
   y -= 12;
+  rule(y);
+  y -= 24;
 
-  section("Payment Summary");
-  row("Total Amount", money(sale.amount));
-  if (sale.discount) row("Discount", `-${money(sale.discount)}`);
-  row("Amount After Discount", money(sale.amount - sale.discount), true);
-  row("Paid", money(sale.paid));
-  y += 4;
-  rule(y + 8);
-  y -= 6;
-  row("Balance Due", money(Math.max(0, due)), true, 12.5);
-  y -= 8;
+  // ---- totals
+  const tx = width - M - 200;
+  const totalRow = (label: string, value: string, strong = false) => {
+    write(label, tx, y, 10, strong ? bold : regular, strong ? INK : GREY);
+    writeRight(value, width - M, y, 10, strong ? bold : regular);
+    y -= 17;
+  };
+  totalRow("Subtotal", money(sale.amount));
+  if (sale.discount) totalRow("Discount", `-${money(sale.discount)}`);
+  rule(y + 11, tx, width - M);
+  totalRow("Total", money(total), true);
+  totalRow("Paid", money(sale.paid));
+  // The bar sits below the last row, with the text centred in it.
+  y -= 10;
+  page.drawRectangle({ x: tx - 10, y: y - 9, width: width - M - tx + 10, height: 28, color: BRAND });
+  write("Balance Due", tx, y, 12, bold, ON_BRAND);
+  writeRight(money(due), width - M - 8, y, 12, bold, ON_BRAND);
+  y -= 42;
 
+  // ---- payments received
   if (sale.payments.length > 0) {
-    section("Payments Received");
+    write("PAYMENTS RECEIVED", M, y, 8, bold, ACCENT);
+    y -= 16;
     for (const p of sale.payments) {
-      write(p.date, M, y);
-      write(paymentModeLabel(p.mode), M + 110, y);
-      writeRight(money(p.amount), width - M, y);
-      y -= 18;
+      write(p.date, M, y, 9.5);
+      write(paymentModeLabel(p.mode), M + 110, y, 9.5, regular, GREY);
+      writeRight(money(p.amount), width - M, y, 9.5);
+      y -= 8;
+      rule(y);
+      y -= 12;
     }
-    y -= 6;
+    y -= 8;
   }
 
   // ---- closing
   rule(y);
-  y -= 18;
-  for (const line of wrap(`Thank you for choosing ${gym?.name ?? "us"}! We appreciate your business and commitment to your fitness journey.`, 9.5, width - 2 * M)) {
-    write(line, M, y, 9.5, regular, MUTED);
+  y -= 20;
+  const thanks = `Thank you for choosing ${gym?.name ?? "us"}! We appreciate your commitment to your fitness journey.`;
+  for (const line of wrap(thanks, 9.5, width - 2 * M)) {
+    write(line, (width - regular.widthOfTextAtSize(line, 9.5)) / 2, y, 9.5, regular, GREY);
     y -= 13;
   }
-  y -= 10;
-  write("Terms and Conditions", M, y, 9.5, bold);
-  y -= 13;
+  y -= 12;
+  write("Terms and Conditions", M, y, 9, bold);
+  y -= 12;
   for (const line of wrap(gym?.invoiceTerms || DEFAULT_TERMS, 8.5, width - 2 * M)) {
     if (y < M + 40) break;
-    write(line, M, y, 8.5, regular, MUTED);
-    y -= 11.5;
+    write(line, M, y, 8.5, regular, GREY);
+    y -= 11;
   }
-  const footer = [gym?.phone ? `+91 ${gym.phone}` : null, gym?.email].filter(Boolean).join("  |  ");
+
+  // ---- footer
   const foot1 = "If you have any questions regarding this invoice, please contact us.";
-  write(foot1, (width - regular.widthOfTextAtSize(clean(foot1), 8.5)) / 2, M + 12, 8.5, regular, MUTED);
-  if (footer) write(footer, (width - regular.widthOfTextAtSize(clean(footer), 8.5)) / 2, M, 8.5, regular, MUTED);
+  const foot2 = [gym?.phone ? `+91 ${gym.phone}` : null, gym?.email].filter(Boolean).join("  |  ");
+  write(foot1, (width - regular.widthOfTextAtSize(clean(foot1), 8.5)) / 2, 34, 8.5, regular, GREY);
+  if (foot2) write(foot2, (width - regular.widthOfTextAtSize(clean(foot2), 8.5)) / 2, 22, 8.5, regular, GREY);
+  page.drawRectangle({ x: 0, y: 0, width, height: 8, color: BRAND });
 
   return { bytes: await pdf.save(), fileName: `Invoice-${invoiceNumber(sale.id)}.pdf` };
 }

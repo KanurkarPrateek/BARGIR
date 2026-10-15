@@ -58,7 +58,8 @@ await step("Alpha: Gym Settings save address, GST and logo", async () => {
   await page.goto(`${BASE}/settings`);
   await page.waitForFunction(() => [...document.querySelectorAll("input")].some((i) => i.value === "Alpha Fitness"));
   const inputs = page.locator("[data-slot=card]").first().locator("input:not([type=file])");
-  await inputs.nth(1).fill("12 MG Road, Pune"); await inputs.nth(4).fill("27abcde1234f1z5");
+  // After the two brand colour boxes: name, address, phone, email, GST.
+  await inputs.nth(3).fill("12 MG Road, Pune"); await inputs.nth(6).fill("27abcde1234f1z5");
   const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAFUlEQVR42mNk+M9Qz0AEYBxVSF+FAP5FDvcfRYWgAAAAAElFTkSuQmCC", "base64");
   await page.locator("input[type=file]").setInputFiles({ name: "logo.png", mimeType: "image/png", buffer: png });
   await page.getByAltText("Gym logo").waitFor();
@@ -101,6 +102,15 @@ await step("Beta cannot open Alpha's member by link", async () => {
 await step("public invoice shows Alpha's own details without login", async () => {
   await page.context().clearCookies(); await page.goto(invoiceUrl);
   await page.getByText("12 MG Road, Pune").waitFor(); await page.getByText("GSTIN: 27ABCDE1234F1Z5").waitFor();
+});
+await step("brand colour from Gym Settings colours the invoice", async () => {
+  await signIn(page, "9811111111", "password-1111"); await page.waitForURL(/dashboard|setup/);
+  await page.goto(`${BASE}/settings`); await page.getByRole("button", { name: "Choose image" }).and(page.locator(":enabled")).waitFor();
+  await page.locator("input[placeholder='#1f2937']").fill("#0e7c66");
+  await page.getByRole("button", { name: "Save", exact: true }).click(); await page.waitForTimeout(1500);
+  await page.context().clearCookies(); await page.goto(invoiceUrl); await page.getByText("Billed to").waitFor();
+  const band = await page.locator("h2", { hasText: "INVOICE" }).evaluate((el) => getComputedStyle(el.parentElement.parentElement).backgroundColor);
+  if (band !== "rgb(14, 124, 102)") throw new Error(`invoice band is ${band}`);
 });
 await step("a switched-off gym cannot sign in, and can again when switched on", async () => {
   await signIn(page, ADMIN_LOGIN, ADMIN_PASSWORD); await page.waitForURL(/admin\/gyms/);

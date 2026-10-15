@@ -392,6 +392,7 @@ export async function GetSaleWithExpand(sale_id: string): Promise<any> {
             address: true,
           },
         },
+        payments: { orderBy: { createdAt: "asc" } },
         service: {
           select: {
             id: true,
@@ -406,7 +407,7 @@ export async function GetSaleWithExpand(sale_id: string): Promise<any> {
     if (!sale) return null;
     const gym = await publicPrisma.gym.findUnique({
       where: { id: sale.gym_id },
-      select: { name: true, address: true, phone: true, email: true, gstin: true, invoiceTerms: true, logo: true },
+      select: { name: true, address: true, phone: true, email: true, gstin: true, invoiceTerms: true, logo: true, brandColor: true },
     });
     return {
       ...sale,
@@ -418,7 +419,9 @@ export async function GetSaleWithExpand(sale_id: string): Promise<any> {
         gstin: gym?.gstin ?? "",
         invoiceTerms: gym?.invoiceTerms ?? "",
         logo: gym?.logo ?? "",
+        brandColor: gym?.brandColor ?? "",
       },
+      payments: sale.payments.map((p) => ({ date: p.date, mode: p.mode, amount: p.amount })),
     };
   } catch (error: any) {
     throw error;

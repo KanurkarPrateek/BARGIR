@@ -78,7 +78,9 @@ Do these once, in this order. Each takes a minute or two.
 
 1. **Sign in** at `/signin` with the phone number and password the platform admin gave you.
 2. **Gym Settings** → add your logo, address, contact number, GST number and invoice terms.
-   These print on every invoice and appear in WhatsApp messages.
+   These print on every invoice and appear in WhatsApp messages. When you choose a logo,
+   its main colour becomes the **brand colour** of your invoices (header band, totals,
+   accents); change it with the colour picker, or **Default** for dark grey.
 3. **Package Management → Add Package** → one entry per plan you sell
    (name, price, months). Switch on *Personal training package* for PT plans.
 4. **Trainer Management** → add your trainers with their WhatsApp numbers.

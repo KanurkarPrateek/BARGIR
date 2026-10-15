@@ -1,5 +1,6 @@
 "use server";
 
+import { normalizeHex } from "@/lib/brand";
 import { requireOwner } from "@/lib/tenant";
 import { Failed } from "@/lib/action-result";
 import { UserError, safe } from "@/lib/safe-action";
@@ -106,6 +107,8 @@ export interface GymProfile {
   invoiceTerms: string;
   // Data URL of the logo, or "" for none.
   logo: string;
+  // "#rrggbb", or "" for the default.
+  brandColor: string;
 }
 
 // The browser shrinks the logo before sending; this is a backstop.
@@ -125,6 +128,7 @@ export async function GetGymProfile(): Promise<GymProfile | null> {
     gstin: gym.gstin ?? "",
     invoiceTerms: gym.invoiceTerms ?? "",
     logo: gym.logo ?? "",
+    brandColor: gym.brandColor ?? "",
   };
 }
 
@@ -140,9 +144,12 @@ export async function UpdateGymProfile(data: GymProfile): Promise<void | Failed>
       throw new UserError("The logo must be a PNG, JPG or WebP image");
     }
     if (data.logo.length > MAX_LOGO_CHARS) throw new UserError("The logo image is too large");
+    const brandColor = data.brandColor ? normalizeHex(data.brandColor) : null;
+    if (data.brandColor && !brandColor) throw new UserError("Brand colour must look like #1f6feb");
     await base.gym.update({
       where: { id: session.gymId },
       data: {
+        brandColor,
         name: data.name.trim(),
         address: data.address.trim() || null,
         phone: phone ? BigInt(phone) : null,
