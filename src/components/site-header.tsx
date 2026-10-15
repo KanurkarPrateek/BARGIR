@@ -12,7 +12,7 @@ export function SiteHeader() {
         <SidebarTrigger className="-ml-1" />
         <Separator orientation="vertical" className="mx-1 data-[orientation=vertical]:h-4" />
         <UniversalSearchBox />
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex shrink-0 items-center gap-2">
           <WhatsappBanner />
           <Link href="/attendance">
             <Button variant={'secondary'} size={'sm'}>

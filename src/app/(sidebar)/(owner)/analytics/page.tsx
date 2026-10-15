@@ -47,11 +47,11 @@ function BarList({ rows }: { rows: { label: string; value: number; note?: string
     return (
         <div className='space-y-2'>
             {rows.map((r) => (
-                <div key={r.label} className='grid grid-cols-[9rem_1fr] items-center gap-3 text-sm' title={`${r.label}: ${rupees(r.value)}${r.note ? ` · ${r.note}` : ''}`}>
+                <div key={r.label} className='grid grid-cols-[6.5rem_1fr] items-center gap-3 text-sm sm:grid-cols-[9rem_1fr]' title={`${r.label}: ${rupees(r.value)}${r.note ? ` · ${r.note}` : ''}`}>
                     <span className='truncate'>{r.label}</span>
-                    <div className='flex items-center gap-2'>
-                        <div className='h-3 rounded-r-[4px]' style={{ width: `${Math.max(2, (r.value / max) * 100)}%`, background: 'var(--series-1)' }} />
-                        <span className='shrink-0 tabular-nums'>{rupees(r.value)}{r.note && <span className='text-muted-foreground'> · {r.note}</span>}</span>
+                    <div className='flex min-w-0 items-center gap-2'>
+                        <div className='h-3 shrink-0 rounded-r-[4px]' style={{ width: `max(2px, calc((100% - 8.5rem) * ${r.value / max}))`, background: 'var(--series-1)' }} />
+                        <span className='min-w-0 tabular-nums'>{rupees(r.value)}{r.note && <span className='text-muted-foreground whitespace-nowrap'> · {r.note}</span>}</span>
                     </div>
                 </div>
             ))}
@@ -163,19 +163,19 @@ export default function SalesAnalyticsPage() {
                         <CardContent><MonthlyChart months={d.months} /></CardContent>
                     </Card>
 
-                    <div className='grid gap-4 lg:grid-cols-2'>
+                    <div className='grid gap-4 lg:grid-cols-2 [&>*]:min-w-0'>
                         <Card>
                             <CardHeader><CardTitle>Sales by package</CardTitle><CardDescription>Value sold in this period.</CardDescription></CardHeader>
                             <CardContent className='space-y-4'>
                                 <BarList rows={d.packages.filter((p) => p.sold).map((p) => ({ label: p.name, value: p.value, note: `${p.sold} sold` }))} />
-                                <table className='w-full text-sm'>
+                                <div className='overflow-x-auto'><table className='w-full min-w-[26rem] text-sm'>
                                     <thead className='text-muted-foreground text-left'><tr><th>Package</th><th className='pl-4 text-right'>Sold</th><th className='pl-4 text-right'>Share</th><th className='pl-4 text-right'>Discount</th><th className='pl-4 text-right'>Members now</th></tr></thead>
                                     <tbody>
                                         {d.packages.map((p) => (
                                             <tr key={p.name}><td className='truncate'>{p.name}</td><td className='pl-4 text-right tabular-nums'>{p.sold}</td><td className='pl-4 text-right tabular-nums'>{p.share}%</td><td className='pl-4 text-right tabular-nums'>{rupees(p.discount)}</td><td className='pl-4 text-right tabular-nums'>{p.activeNow}</td></tr>
                                         ))}
                                     </tbody>
-                                </table>
+                                </table></div>
                             </CardContent>
                         </Card>
                         <div className='space-y-4'>
@@ -199,7 +199,7 @@ export default function SalesAnalyticsPage() {
                         </div>
                     </div>
 
-                    <div className='grid gap-4 lg:grid-cols-2'>
+                    <div className='grid gap-4 lg:grid-cols-2 [&>*]:min-w-0'>
                         <Card>
                             <CardHeader><CardTitle>Enquiries by source</CardTitle><CardDescription>{d.enquiries.open} still open, {d.enquiries.lost} lost.</CardDescription></CardHeader>
                             <CardContent>

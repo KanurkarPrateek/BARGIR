@@ -1,4 +1,5 @@
 'use client'
+import { useIsMobile } from "@/hooks/use-mobile"
 import { SearchHit, UniversalSearch } from "@/action/search.action"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
@@ -13,6 +14,7 @@ const KIND_LABEL = { member: "Member", enquiry: "Enquiry", staff: "Staff", train
 export function UniversalSearchBox() {
   const router = useRouter()
   const [query, setQuery] = useState("")
+  const isMobile = useIsMobile()
   const [hits, setHits] = useState<SearchHit[]>([])
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState(0)
@@ -51,7 +53,7 @@ export function UniversalSearchBox() {
   }
 
   return (
-    <div className="relative w-full max-w-md">
+    <div className="relative w-full min-w-0 max-w-md">
       <IconSearch className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
       <Input
         ref={input}
@@ -65,7 +67,7 @@ export function UniversalSearchBox() {
           if (e.key === "Enter" && hits[active]) go(hits[active])
           if (e.key === "Escape") setOpen(false)
         }}
-        placeholder="Universal Search Member — name, phone or ID  ( / )"
+        placeholder={isMobile ? "Search member" : "Universal Search Member — name, phone or ID  ( / )"}
         className="h-9 pl-8"
       />
       {open && query.trim().length >= 2 && (

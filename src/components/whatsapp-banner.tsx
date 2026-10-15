@@ -24,10 +24,11 @@ export function WhatsappBanner() {
   }, [])
   if (!show) return null
   return (
-    <div className="flex items-center gap-2 rounded-md bg-red-50 px-3 py-1 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
-      <span>WhatsApp is not connected</span>
+    <div className="flex shrink-0 items-center gap-2 rounded-md bg-red-50 px-1 py-1 text-sm text-red-700 sm:px-3 dark:bg-red-950 dark:text-red-300">
+      {/* On a phone only the button shows; its label says what to do. */}
+      <span className="hidden sm:inline">WhatsApp is not connected</span>
       <Link href="/whatsapp">
-        <Button size="sm" variant="destructive" className="h-7">Scan Now</Button>
+        <Button size="sm" variant="destructive" className="h-7" title="WhatsApp is not connected">Scan Now</Button>
       </Link>
     </div>
   )

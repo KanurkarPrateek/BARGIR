@@ -77,7 +77,7 @@ const WorkflowsTab = () => {
 
     return (
         <div className='space-y-4'>
-            <div className='flex items-center justify-between gap-2'>
+            <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
                 <p className='text-muted-foreground text-sm'>
                     Each workflow sends its message by itself. Dated ones go out between 9 am and 9 pm.
                 </p>

@@ -114,7 +114,7 @@ const MemberProfilePage = ({ params }: { params: any }) => {
                         {member.memberCode} · {member.phone} · joined {member.DOJ}
                     </p>
                 </div>
-                <div className='flex gap-2'>
+                <div className='flex flex-wrap gap-2'>
                     <Link href={renewUrl}>
                         <Button>{member.sales.length ? 'Renew / new sale' : 'Sell a plan'}</Button>
                     </Link>
@@ -163,7 +163,7 @@ const MemberProfilePage = ({ params }: { params: any }) => {
                 </Card>
             </div>
 
-            <div className='flex items-center justify-between gap-4 rounded-lg border p-4'>
+            <div className='flex flex-wrap items-center justify-between gap-4 rounded-lg border p-4'>
                 <div>
                     <p className='font-medium'>Personal trainer</p>
                     <p className='text-muted-foreground text-sm'>The trainer is told on WhatsApp when assigned.</p>
@@ -172,7 +172,7 @@ const MemberProfilePage = ({ params }: { params: any }) => {
             </div>
 
             <div className='grid gap-4 md:grid-cols-2'>
-                <div className='flex items-center justify-between gap-4 rounded-lg border p-4'>
+                <div className='flex flex-wrap items-center justify-between gap-4 rounded-lg border p-4'>
                     <div>
                         <p className='font-medium'>Batch</p>
                         <p className='text-muted-foreground text-sm'>Time slot they usually come in.</p>
@@ -185,7 +185,7 @@ const MemberProfilePage = ({ params }: { params: any }) => {
                         </SelectContent>
                     </Select>
                 </div>
-                <div className='flex items-center justify-between gap-4 rounded-lg border p-4'>
+                <div className='flex flex-wrap items-center justify-between gap-4 rounded-lg border p-4'>
                     <div>
                         <p className='font-medium'>Biometric</p>
                         <p className='text-muted-foreground text-sm'>
@@ -232,12 +232,12 @@ const MemberProfilePage = ({ params }: { params: any }) => {
                                     {sale.discount > 0 && <span className='text-muted-foreground block'>after {rupees(sale.discount)} off</span>}
                                 </p>
                             </div>
-                            <div className='flex items-center gap-2'>
+                            <div className='flex flex-wrap items-center gap-2'>
                                 <p className='text-sm'>
                                     Paid {rupees(sale.paid)}
                                     {sale.due > 0 && <span className='text-destructive'> · {rupees(sale.due)} due</span>}
                                 </p>
-                                <span className='ml-auto flex gap-2'>
+                                <span className='ml-auto flex flex-wrap gap-2'>
                                     {sale.due > 0 && <RecordPaymentDialog sale={{ ...sale, member_name: member.name }} onSuccess={load} />}
                                     <Link href={`/invoices/${sale.id}`} target='_blank'>
                                         <Button size='sm' variant='ghost'>Invoice</Button>

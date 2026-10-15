@@ -13,9 +13,9 @@ const Page = ({ params }: { params: any }) => {
 
     return (
         <div className='max-w-5xl mx-auto px-4 py-4'>
-            <div className='flex items-center justify-between'>
+            <div className='flex flex-wrap items-center justify-between gap-2'>
                 <h1 className='font-bold mb-2'>Sales Invoice</h1>
-                <div className='mb-2 flex gap-2'>
+                <div className='mb-2 flex flex-wrap gap-2'>
                     <a href={`/invoices/${sale_id}/pdf?download`}>
                         <Button className="bg-blue-600 hover:bg-blue-700 text-white">Download PDF</Button>
                     </a>
@@ -71,10 +71,10 @@ const Invoice = ({
     const gym = (saleData as any)?.gym as { name: string; address: string; phone: string; email: string; gstin: string; invoiceTerms: string; logo: string } | undefined
 
     return (
-        <div className='mx-auto bg-white text-black p-8' ref={ref}>
+        <div className='mx-auto bg-white text-black p-4 sm:p-8' ref={ref}>
             <div className="flex flex-col">
                 {/* Header */}
-                <div className="flex justify-between items-start mb-10">
+                <div className="flex flex-wrap justify-between items-start gap-4 mb-10">
                     <div>
                         {gym?.logo && <img src={gym.logo} alt="" className="h-16 mb-4 object-contain" />}
                         <h1 className="text-black text-lg font-semibold">{gym?.name}</h1>

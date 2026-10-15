@@ -228,5 +228,23 @@ await step("BlackList: member refused at check-in and listed under BlackList Mem
   await page.getByRole("button", { name: "Remove from BlackList" }).click(); await toast(page, "Removed from BlackList");
 });
 
+await step("phone width: no screen scrolls sideways, and lists become cards", async () => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const wide = [];
+  const check = async (label) => {
+    const [scroll, width] = await page.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.clientWidth]);
+    if (scroll > width + 1) wide.push(`${label} (${scroll}px)`);
+  };
+  for (const path of ["/dashboard", "/analytics", "/members", "/sales", "/sales/new", "/sales/pending-payments", "/sales/followups", "/enquiries", "/enquiries/followups", "/members/new", "/members/batches", "/payments", "/expenses", "/staff", "/staff-attendance", "/trainers", "/services", "/attendance", "/attendance/biometric", "/backdate", "/whatsapp", "/whatsapp?tab=log", "/settings"]) {
+    await page.goto(BASE + path); await page.waitForTimeout(800); await check(path);
+  }
+  await page.goto(`${BASE}/members`);
+  const card = page.locator("li", { hasText: "Member Id" }).first(); await card.waitFor();
+  await card.locator("p.font-medium").click(); await page.waitForURL(/\/members\/[0-9a-f-]{36}$/);
+  await page.waitForTimeout(800); await check("member profile");
+  await page.setViewportSize({ width: 1400, height: 1000 });
+  if (wide.length) throw new Error("too wide on a phone: " + wide.join(", "));
+});
+
 machine?.stop();
 process.exitCode = await finish();

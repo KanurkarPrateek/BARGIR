@@ -17,7 +17,8 @@ export default async function Team({ searchParams }: { searchParams: Promise<{ e
       <PageTitle title="Sales team" description="Who sells the software, their commission, and what they are owed." />
       <Notice params={notice} />
       <Card>
-        <table>
+        <div className="overflow-x-auto">
+        <table className="min-w-[36rem]">
           <thead><tr><th>Name</th><th>Gyms sold</th><th className="text-right">Their MRR</th><th className="text-right">Commission %</th><th className="text-right">Earned this month</th><th className="text-right">Owed</th></tr></thead>
           <tbody>
             {users.map((u, i) => (
@@ -32,6 +33,7 @@ export default async function Team({ searchParams }: { searchParams: Promise<{ e
             ))}
           </tbody>
         </table>
+        </div>
       </Card>
       <Card title="Add a salesperson" description="They sign in here with their email and see only the gyms they sold and their commission.">
         <form action={addUser} className="grid gap-4 sm:grid-cols-3">
