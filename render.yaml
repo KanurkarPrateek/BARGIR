@@ -1,0 +1,27 @@
+# Render blueprint for the WhatsApp sender (worker/). In Render choose
+# New > Blueprint and point it at this repository.
+services:
+  - type: web
+    name: gym-whatsapp-sender
+    runtime: node
+    plan: free
+    rootDir: worker
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      # Supabase "Session pooler" connection string (works over IPv4).
+      - key: DATABASE_URL
+        sync: false
+      # Must match the same settings on Vercel.
+      - key: WHATSAPP_WORKER_KEY
+        sync: false
+      - key: CRON_SECRET
+        sync: false
+      # The app's address on Vercel, e.g. https://your-app.vercel.app
+      - key: APP_URL
+        sync: false
+      - key: WHATSAPP_COUNTRY_CODE
+        value: "91"

@@ -1,0 +1,17 @@
+{
+    "name": "Gym Manager",
+    "short_name": "Gym Manager",
+    "start_url": "/",
+    "background_color": "#fff",
+    "theme_color": "#000",
+    "display": "standalone",
+    "display_override": ["window-controls-overlay"],
+    "icons": [
+      {
+        "src": "/fav.png",
+        "sizes": "128x128",
+        "type": "image/png"
+      }
+    ],
+    "id": "gym-manager"
+}

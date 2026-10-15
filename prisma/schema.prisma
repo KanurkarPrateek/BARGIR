@@ -1,0 +1,475 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Member {
+  id         String          @id @default(uuid())
+  // Gym this row belongs to; set and filtered automatically (src/lib/tenant.ts).
+  gym_id String @default("")
+  name       String
+  email      String?
+  memberCode String          @unique
+  phone      BigInt
+  password   String          @default("Test@12345")
+  // User ID this member is enrolled under on the biometric machine.
+  biometricId String?
+  // Blocked members are refused at the front desk and removed from machines.
+  blacklisted     Boolean @default(false)
+  blacklistReason String?
+  // Taken off the biometric machines (blacklisted, or expired with auto-block on).
+  machineBlocked  Boolean @default(false)
+  // Preferred workout time slot.
+  batch_id   String?
+  batch      Batch?          @relation(fields: [batch_id], references: [id], onDelete: SetNull)
+  address    String?
+  DOB        String
+  reviewDone Boolean         @default(false)
+  gender     Gender
+  DOJ        String
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+  sales      Sales[]
+  attendance Attendance[]
+  payments   Payment[]
+  // Personal trainer looking after this member, if any.
+  trainer_id String?
+  trainer    Trainer?        @relation(fields: [trainer_id], references: [id], onDelete: SetNull)
+
+  @@index([gym_id])
+  // Machine IDs are only unique within one gym.
+  @@unique([gym_id, biometricId])
+}
+
+model Services {
+  id          String   @id @default(uuid())
+  // Gym this row belongs to; set and filtered automatically (src/lib/tenant.ts).
+  gym_id String @default("")
+  name        String
+  description String?
+  price       Int
+  duration    Int
+  // Personal training package: buyers show up as PT clients needing a trainer.
+  isPersonalTraining Boolean @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  sales       Sales[]
+
+  @@index([gym_id])
+}
+
+model Sales {
+  id          String   @id @default(uuid())
+  // Gym this row belongs to; set and filtered automatically (src/lib/tenant.ts).
+  gym_id String @default("")
+  member_id   String
+  service_id  String
+  service     Services @relation(fields: [service_id], references: [id])
+  description String?
+  discount    Int
+  amount      Int
+  paid        Int
+  startDate   String
+  endDate     String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  member      Member   @relation(fields: [member_id], references: [id])
+  // `paid` is the running total of `payments`, kept in step by the
+  // payment actions so existing reports can keep reading it.
+  payments    Payment[]
+  // Trainer delivering this package (personal training sales).
+  trainer_id  String?
+  trainer     Trainer? @relation(fields: [trainer_id], references: [id], onDelete: SetNull)
+
+  @@index([gym_id])
+}
+
+enum PaymentMode {
+  cash
+  upi
+  card
+  bank_transfer
+  other
+}
+
+// One instalment of money received against a sale.
+model Payment {
+  id        String      @id @default(uuid())
+  // Gym this row belongs to; set and filtered automatically (src/lib/tenant.ts).
+  gym_id String @default("")
+  sale_id   String
+  sale      Sales       @relation(fields: [sale_id], references: [id], onDelete: Cascade)
+  member_id String
+  member    Member      @relation(fields: [member_id], references: [id], onDelete: Cascade)
+  amount    Int
+  mode      PaymentMode @default(cash)
+  date      String // dd-MM-yyyy
+  note      String?
+  createdAt DateTime    @default(now())
+
+  @@index([date])
+
+  @@index([gym_id])
+}
+
+model Trainer {
+  id             String    @id @default(uuid())
+  // Gym this row belongs to; set and filtered automatically (src/lib/tenant.ts).
+  gym_id String @default("")
+  name           String
+  phone          BigInt
+  specialization String?
+  active         Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  members        Member[]
+  sales          Sales[]
+  enquiries      Enquiry[]
+
+  @@index([gym_id])
+}
+
+model Attendance {
+  id        String   @id @default(uuid())
+  // Gym this row belongs to; set and filtered automatically (src/lib/tenant.ts).
+  gym_id String @default("")
+  member_id String
+  member    Member   @relation(fields: [member_id], references: [id])
+  date      String
+  time      String   @default("00:00:00")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([gym_id])
+}
+
+model Enquiry {
+  id           String      @id @default(uuid())
+  // Gym this row belongs to; set and filtered automatically (src/lib/tenant.ts).
+  gym_id String @default("")
+  name         String
+  phone        BigInt
+  followupDate String?
+  message      String?
+  type         EnquiryType
+  status       EnquiryStatus @default(open)
+  // Staff member responsible for following up.
+  trainer_id   String?
+  trainer      Trainer?    @relation(fields: [trainer_id], references: [id], onDelete: SetNull)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@index([gym_id])
+}
+
+enum EnquiryStatus {
+  open
+  trial
+  joined
+  lost
+}
+
+enum EnquiryType {
+  call
+  walkin
+  instagram
+  whatsapp
+}
+
+enum Gender {
+  male
+  female
+  other
+}
+
+
+// ---------- WhatsApp automation ----------
+
+enum WorkflowTrigger {
+  enquiry_created
+  enquiry_followup
+  membership_expiry
+  birthday
+  sale_created
+  payment_received
+}
+
+// An admin-defined rule: when `trigger` happens (shifted by `offsetDays`
+// for date based triggers), send `template` on WhatsApp.
+model WhatsappWorkflow {
+  id         String            @id @default(uuid())
+  // Gym this row belongs to; set and filtered automatically (src/lib/tenant.ts).
+  gym_id String @default("")
+  name       String
+  trigger    WorkflowTrigger
+  offsetDays Int               @default(0)
+  template   String
+  enabled    Boolean           @default(true)
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+  messages   WhatsappMessage[]
+
+  @@index([gym_id])
+}
+
+enum CampaignAudience {
+  all_members
+  active_members
+  expired_members
+  enquiries
+  everyone
+}
+
+// A one-off offer / announcement sent to a group of people.
+model WhatsappCampaign {
+  id        String            @id @default(uuid())
+  // Gym this row belongs to; set and filtered automatically (src/lib/tenant.ts).
+  gym_id String @default("")
+  title     String
+  template  String
+  audience  CampaignAudience
+  createdAt DateTime          @default(now())
+  messages  WhatsappMessage[]
+
+  @@index([gym_id])
+}
+
+enum MessageStatus {
+  pending
+  sent
+  failed
+}
+
+// Outgoing message queue + log. `dedupeKey` stops a workflow from
+// messaging the same person twice for the same event.
+model WhatsappMessage {
+  id          String            @id @default(uuid())
+  // Gym this row belongs to; set and filtered automatically (src/lib/tenant.ts).
+  gym_id String @default("")
+  name        String
+  phone       BigInt
+  body        String
+  status      MessageStatus     @default(pending)
+  error       String?
+  dedupeKey   String?           @unique
+  workflow_id String?
+  workflow    WhatsappWorkflow? @relation(fields: [workflow_id], references: [id], onDelete: SetNull)
+  campaign_id String?
+  campaign    WhatsappCampaign? @relation(fields: [campaign_id], references: [id], onDelete: SetNull)
+  createdAt   DateTime          @default(now())
+  sentAt      DateTime?
+
+  @@index([gym_id])
+}
+
+// ---------- Biometric attendance ----------
+
+// A fingerprint / face machine that pushes punches to /iclock (ADMS protocol).
+// A gym registers its machine by serial number; every machine talks to the
+// same address and the serial decides which gym its punches belong to.
+model BiometricDevice {
+  serial      String   @id
+  gym_id      String
+  // Position in the machine's log up to which punches have been received.
+  attlogStamp String   @default("0")
+  lastSeenAt  DateTime?
+  createdAt   DateTime @default(now())
+
+  @@index([gym_id])
+}
+
+// Every punch as received. `member_id` is filled in once the punch has been
+// turned into attendance, so punches for IDs nobody has linked yet can be
+// applied later.
+model BiometricPunch {
+  id           String   @id @default(uuid())
+  // Gym this row belongs to; set and filtered automatically (src/lib/tenant.ts).
+  gym_id String @default("")
+  deviceSerial String
+  pin          String
+  date         String // dd-MM-yyyy
+  time         String // HH:mm:ss
+  // Set once the punch has been turned into a member's or staff member's
+  // attendance; both empty means nobody is linked to this machine ID yet.
+  member_id    String?
+  staff_id     String?
+  createdAt    DateTime @default(now())
+
+  @@unique([deviceSerial, pin, date, time])
+  @@index([pin, member_id])
+
+  @@index([gym_id])
+}
+
+// Names stored on the machine, to help admins recognise an unlinked ID.
+model BiometricUser {
+  id     String @id @default(uuid())
+  // Gym this row belongs to; set and filtered automatically (src/lib/tenant.ts).
+  gym_id String @default("")
+  pin    String
+  name   String
+
+  @@unique([gym_id, pin])
+}
+
+// ---------- Gyms and staff logins ----------
+
+model Gym {
+  id        String   @id @default(uuid())
+  name      String
+  // Contact number for the gym; also printed on invoices.
+  phone     BigInt?
+  address   String?
+  email     String?
+  gstin     String?
+  // Printed at the bottom of invoices.
+  invoiceTerms String?
+  // Remove members from the biometric machines when their membership ends,
+  // and add them back when they renew.
+  autoBlockExpired Boolean @default(false)
+  // Small image stored as a data URL (shrunk in the browser before upload),
+  // so no file storage is needed.
+  logo      String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  users     User[]
+}
+
+enum UserRole {
+  owner
+  staff
+}
+
+// Someone who signs in to run a gym. The platform admin is not a row here;
+// those credentials come from SUPERADMIN_PHONE / SUPERADMIN_PASSWORD.
+model User {
+  id           String   @id @default(uuid())
+  gym_id       String
+  gym          Gym      @relation(fields: [gym_id], references: [id], onDelete: Cascade)
+  name         String
+  phone        BigInt   @unique
+  passwordHash String
+  role         UserRole @default(owner)
+  // For front-desk logins: the staff member this login belongs to.
+  staff_id     String?  @unique
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// WhatsApp login data for each gym's linked number, kept here because the
+// sender service has no disk of its own.
+model WhatsappAuth {
+  gym_id    String
+  key       String
+  value     String
+  updatedAt DateTime @default(now()) @updatedAt
+
+  @@id([gym_id, key])
+}
+
+// ---------- Batches, staff, expenses, machine commands ----------
+
+// A workout time slot, e.g. "Morning 6-8 AM".
+model Batch {
+  id        String   @id @default(uuid())
+  // Gym this row belongs to; set and filtered automatically (src/lib/tenant.ts).
+  gym_id    String   @default("")
+  name      String
+  startTime String // HH:mm
+  endTime   String // HH:mm
+  createdAt DateTime @default(now())
+  members   Member[]
+
+  @@index([gym_id])
+}
+
+// People who work at the gym (front desk, cleaners, managers). Trainers stay
+// in their own table because members and PT packages link to them.
+model Staff {
+  id          String            @id @default(uuid())
+  gym_id      String            @default("")
+  name        String
+  phone       BigInt
+  role        String // free text: "Front desk", "Manager", ...
+  shiftStart  String? // HH:mm
+  shiftEnd    String? // HH:mm
+  salary      Int?
+  joinDate    String // dd-MM-yyyy
+  active      Boolean           @default(true)
+  // ID this person is enrolled under on the biometric machine.
+  biometricId String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  attendance  StaffAttendance[]
+
+  @@unique([gym_id, biometricId])
+  @@index([gym_id])
+}
+
+model StaffAttendance {
+  id        String   @id @default(uuid())
+  gym_id    String   @default("")
+  staff_id  String
+  staff     Staff    @relation(fields: [staff_id], references: [id], onDelete: Cascade)
+  date      String // dd-MM-yyyy
+  // First and last punch of the day.
+  inTime    String // HH:mm:ss
+  outTime   String?
+  createdAt DateTime @default(now())
+
+  @@unique([staff_id, date])
+  @@index([gym_id, date])
+}
+
+model Expense {
+  id        String      @id @default(uuid())
+  gym_id    String      @default("")
+  category  String // Rent, Salary, Electricity, Equipment, ...
+  amount    Int
+  date      String // dd-MM-yyyy
+  mode      PaymentMode @default(cash)
+  note      String?
+  createdAt DateTime    @default(now())
+
+  @@index([gym_id, date])
+}
+
+enum CommandStatus {
+  pending
+  sent
+  done
+  failed
+}
+
+// Instructions waiting for a biometric machine; it collects them on its next
+// check-in and reports back whether each one worked.
+model BiometricCommand {
+  id           String        @id @default(uuid())
+  gym_id       String        @default("")
+  deviceSerial String
+  // Number the machine echoes back when reporting the result.
+  seq          Int           @default(autoincrement())
+  // What it is for, in words: "Add Rahul Sharma (ID 12)".
+  label        String
+  command      String
+  status       CommandStatus @default(pending)
+  returnCode   String?
+  createdAt    DateTime      @default(now())
+  sentAt       DateTime?
+  doneAt       DateTime?
+
+  @@index([deviceSerial, status])
+  @@index([gym_id])
+}

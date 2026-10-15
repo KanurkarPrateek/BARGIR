@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Type check, build and browser tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      # The app and the tests both work in India time.
+      TZ: Asia/Kolkata
+      TEST_DATABASE_URL: postgresql://postgres:gym@localhost:5433/gym_e2e
+      DATABASE_URL: postgresql://postgres:gym@localhost:5433/gym_e2e
+      DIRECT_URL: postgresql://postgres:gym@localhost:5433/gym_e2e
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: gym
+          POSTGRES_DB: gym_e2e
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            worker/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Database schema is valid
+        run: npx prisma validate
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: WhatsApp sender installs and parses
+        working-directory: worker
+        run: |
+          npm ci
+          node --check index.js
+
+      - name: Biometric simulator parses
+        run: node --check tools/biometric-simulator/simulator.mjs
+
+      # Builds the app for production and runs every browser test against a
+      # throwaway database, with stand-ins for WhatsApp and email.
+      - name: Browser tests
+        run: npm run test:e2e
+
+      - name: Screenshots of failed steps
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-screenshots
+          path: tests/e2e/screenshots/
+          if-no-files-found: ignore
+
+      - name: App log
+        if: failure()
+        run: tail -100 /tmp/gym-e2e-app.log || true

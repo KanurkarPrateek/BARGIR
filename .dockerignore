@@ -1,0 +1,13 @@
+.git
+.github
+.next
+node_modules
+k8s
+screenshots
+.env*
+*.md
+*.tsbuildinfo
+pnpm-lock.yaml
+Dockerfile
+worker
+tools

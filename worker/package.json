@@ -1,0 +1,19 @@
+{
+  "name": "gym-whatsapp-sender",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Keeps each gym's WhatsApp number linked and delivers the queued messages.",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "6.7.24",
+    "pg": "^8.13.1",
+    "pino": "^9.6.0",
+    "qrcode": "^1.5.4"
+  }
+}
