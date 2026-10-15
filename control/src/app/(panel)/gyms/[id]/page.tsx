@@ -1,13 +1,14 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { cookies } from "next/headers";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { newPassword } from "@/lib/crypto";
+import { newPassword as generatePassword } from "@/lib/crypto";
 import { clusterGyms, type RemoteGym } from "@/lib/cluster-api";
 import { day, inputDate, nextRenewal, planLabel, PLANS, renewalState, rupees } from "@/lib/business";
 import { deleteGymRecord, deletePayment, recordPayment, resetOwnerPassword, setGymStatus, updateGym } from "../../../actions";
 import { Badge, btn, btnDanger, btnOutline, Card, Field, Notice, PageTitle, Stat } from "@/components/ui";
-import { ConfirmButton } from "@/components/client";
+import { ConfirmButton, CopyButton } from "@/components/client";
 
 export default async function GymPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ error?: string; ok?: string }> }) {
   const [{ id }, notice, user] = await Promise.all([params, searchParams, requireUser()]);
@@ -22,6 +23,7 @@ export default async function GymPage({ params, searchParams }: { params: Promis
   } catch (e) {
     remoteError = e instanceof Error ? e.message : "Cluster unreachable";
   }
+  const newPassword = admin ? (await cookies()).get(`new_login_${gym.id}`)?.value : undefined;
   const s = renewalState(gym);
   const paid = gym.payments.reduce((sum, p) => sum + p.amount, 0);
 
@@ -30,6 +32,15 @@ export default async function GymPage({ params, searchParams }: { params: Promis
       <PageTitle title={gym.name} description={<>{gym.ownerName} · {gym.ownerPhone}{gym.city ? ` · ${gym.city}` : ""}{admin && <> · on <Link href={`/clusters/${gym.cluster_id}`} className="underline">{gym.cluster.name}</Link></>}</>}
         actions={<Badge tone={s.tone}>{s.label}</Badge>} />
       <Notice params={notice} />
+      {newPassword && (() => {
+        const login = `${gym.name}\nSign in: ${gym.cluster.appUrl}/signin\nMobile: ${gym.ownerPhone}\nPassword: ${newPassword}`;
+        return (
+          <Card title="Owner login" description="Send this to the owner now. It is shown only for the next few minutes.">
+            <pre className="mb-3 rounded-md bg-stone-100 p-3 text-sm dark:bg-stone-800">{login}</pre>
+            <CopyButton text={login} label="Copy login details" />
+          </Card>
+        );
+      })()}
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <Stat label="Plan" value={rupees(gym.price)} hint={`${planLabel(gym.plan)} · since ${day(gym.startDate)}`} />
@@ -90,7 +101,7 @@ export default async function GymPage({ params, searchParams }: { params: Promis
               </div>
               <form action={resetOwnerPassword} className="flex flex-wrap items-end gap-2">
                 <input type="hidden" name="id" value={gym.id} />
-                <div className="min-w-48 flex-1"><Field label="New owner password"><input name="password" minLength={8} required defaultValue={newPassword()} /></Field></div>
+                <div className="min-w-48 flex-1"><Field label="Set a new owner password" hint="Only if the owner forgot theirs. At least 8 characters."><input name="password" minLength={8} required autoComplete="new-password" placeholder={`e.g. ${generatePassword()}`} /></Field></div>
                 <ConfirmButton message="Change the owner's password? Tell them the new one." className={btnOutline}>Reset password</ConfirmButton>
               </form>
             </div>

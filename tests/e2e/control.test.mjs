@@ -61,6 +61,7 @@ await step("create a gym: it is made on the cluster with its owner login", async
   await field("Sold by").selectOption({ label: "Ravi Sales (10%)" });
   await page.getByRole("button", { name: "Create gym" }).click();
   await ok("Gym created on cluster-1"); gymUrl = page.url().split("?")[0];
+  await page.locator("pre", { hasText: `Password: ${ownerPassword}` }).waitFor();
   await page.getByText("0 active of 0").waitFor();
 });
 await step("the new owner signs in to the gym app", async () => {
@@ -89,7 +90,7 @@ await step("suspend: the gym cannot sign in; resume: it can", async () => {
 });
 await step("reset the owner's password", async () => {
   await controlSignIn(ADMIN.email, ADMIN.password); await page.waitForURL(CONTROL + "/");
-  await page.goto(gymUrl); await field("New owner password").fill("new-pass-12345");
+  await page.goto(gymUrl); await field("Set a new owner password").fill("new-pass-12345");
   await page.getByRole("button", { name: "Reset password" }).click(); await ok("Owner password changed");
   await signIn(page, "9811100099", "new-pass-12345"); await page.waitForURL(/setup|dashboard/);
 });

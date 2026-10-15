@@ -38,7 +38,7 @@ export default async function NewGym({ searchParams }: { searchParams: Promise<P
             <Field label="City"><input name="city" defaultValue={p.city} /></Field>
             <Field label="Owner name"><input name="ownerName" required defaultValue={p.ownerName} /></Field>
             <Field label="Owner mobile" hint="The owner signs in with this number."><input name="ownerPhone" required inputMode="tel" defaultValue={p.ownerPhone} readOnly={linking} /></Field>
-            {!linking && <Field label="Owner password" hint="Copy it now and send it to the owner. They can change it later."><input name="password" required minLength={8} defaultValue={newPassword()} /></Field>}
+            {!linking && <Field label="Owner password" hint="Copy it now and send it to the owner. They can change it later."><input name="password" required minLength={8} autoComplete="off" defaultValue={newPassword()} /></Field>}
             <Field label="Cluster">
               <select name="cluster_id" defaultValue={clusterId} required disabled={linking}>
                 {clusters.map((c) => <option key={c.id} value={c.id} disabled={!linking && !!problem(c)}>{c.name} — {c._count.gyms}/{c.capacity} gyms{problem(c) ? ` (${problem(c)})` : ""}</option>)}

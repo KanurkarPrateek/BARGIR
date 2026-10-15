@@ -2,6 +2,7 @@
 // Every change made in the Control Panel. Problems are reported by sending the
 // browser back with ?error=..., successes with ?ok=...
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import type { GymStatus, Plan, Role } from "@prisma/client";
 import { db } from "@/lib/db";
@@ -174,7 +175,11 @@ export async function createGym(form: FormData) {
       status: trial ? "trial" : "active",
     },
   });
-  back(`/gyms/${gym.id}`, remoteId ? "Gym linked" : `Gym created on ${cluster.name}. The owner signs in with ${ownerPhone} and the password you set.`, "ok");
+  if (!remoteId) {
+    // Shown once on the gym page so the login can be copied; gone after 10 minutes.
+    (await cookies()).set(`new_login_${gym.id}`, password, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: `/gyms/${gym.id}`, maxAge: 600 });
+  }
+  back(`/gyms/${gym.id}`, remoteId ? "Gym linked" : `Gym created on ${cluster.name}.`, "ok");
 }
 
 export async function updateGym(form: FormData) {
@@ -231,7 +236,7 @@ export async function resetOwnerPassword(form: FormData) {
   } catch (e) {
     back(`/gyms/${id}`, errorText(e));
   }
-  back(`/gyms/${id}`, `Owner password changed to ${password}`, "ok");
+  back(`/gyms/${id}`, `Owner password changed to ${password}. Send it to the owner.`, "ok");
 }
 
 export async function deleteGymRecord(form: FormData) {
