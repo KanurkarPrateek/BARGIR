@@ -1,4 +1,6 @@
 'use client'
+import { renewalReminder } from '@/lib/whatsapp/messages'
+import { differenceInCalendarDays, parse, startOfDay } from 'date-fns'
 import { SendWhatsappButton } from '@/components/custom/send-whatsapp-button'
 import { useGymName } from '@/hooks/use-gym-name'
 import { GetEnquiryByFollowupDate } from '@/action/enquiries.action'
@@ -73,28 +75,14 @@ const page = (props: Props) => {
 
     const handleSaleSelected = (row: any) => {
         setSelectedSale(row);
-        const msgexpired = `Hi👋🏻 ${row.member_name} your ${row.service_name} membership has ended on ${(row.endDate)}, Please renew your membership.%0A%0A-Team ${gymName} 💪🏻`
-        const msg7days = `Hi👋🏻 ${row.member_name} your ${row.service_name} membership is ending in 7 days (on ${(row.endDate)}), Please renew your membership.%0A%0A-Team ${gymName} 💪🏻`
-        const msg5days = `Hi👋🏻 ${row.member_name} your ${row.service_name} membership is ending in 5 days (on ${(row.endDate)}), Please renew your membership.%0A%0A-Team ${gymName} 💪🏻`
-        const msgtoday = `Hi👋🏻 ${row.member_name} your ${row.service_name} membership is ending today (on ${(row.endDate)}), Please renew your membership.%0A%0A-Team ${gymName} 💪🏻`
-        const msgtomorrow = `Hi👋🏻 ${row.member_name} your ${row.service_name} membership is ending tomorrow (on ${(row.endDate)}), Please renew your membership.%0A%0A-Team ${gymName} 💪🏻`
-        if (days === -1) {
-            setMessage(msgexpired)
-        } else if (days === 7) {
-            setMessage(msg7days)
-        } else if (days === 5) {
-            setMessage(msg5days)
-        } else if (days === 0) {
-            setMessage(msgtoday)
-        } else if (days === 1) {
-            setMessage(msgtomorrow)
-        }
+        const days = differenceInCalendarDays(parse(row.endDate, 'dd-MM-yyyy', new Date()), startOfDay(new Date()))
+        setMessage(renewalReminder(row.member_name, row.service_name, row.endDate, days, gymName))
     }
 
     return (
         <div className='max-w-xl w-full mx-auto space-y-6 p-4'>
             <div className='flex items-center justify-between'>
-                <h1 className='text-xl font-semibold'>Membership Followups</h1>
+                <h1 className='text-xl font-semibold'>Renewal Follow-ups</h1>
             </div>
             <Separator />
             <Card>
@@ -105,7 +93,7 @@ const page = (props: Props) => {
                 {
                     SelectedSale &&
                     <CardContent className='space-y-4'>
-                        <p>{message}</p>
+                        <p className='bg-muted rounded-md px-3 py-2 text-sm whitespace-pre-wrap'>{message}</p>
                         <SendWhatsappButton key={message} name={SelectedSale.member_name} phone={SelectedSale.member_phone} message={message} label='Send on WhatsApp' />
                     </CardContent>
                 }

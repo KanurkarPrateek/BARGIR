@@ -1,4 +1,5 @@
 'use client'
+import { birthdayWish } from '@/lib/whatsapp/messages'
 import { SendWhatsappButton } from '@/components/custom/send-whatsapp-button'
 import { useGymName } from '@/hooks/use-gym-name'
 import { GetEnquiryByFollowupDate } from '@/action/enquiries.action'
@@ -42,10 +43,7 @@ const page = (props: Props) => {
     }, [date])
     const handleMemberChange = (row: any) => {
         setSelectedMember(row)
-        const msg = `Hi👋🏻 ${row.name}  its your Birthday today, Team ${gymName} wishes you a very "Happy Birthday" 😊. Stay Healthy Stay Strong.`
-        const msg1 = `Hello Dear ${row.name}, it's your birthday today . Team ${gymName} wishes you a very HAPPY BIRTHDAY 😊. Stay Healthy Stay Strong 💪🏻`
-        const msg2 = `Hello Dear ${row.name}, it's your birthday today . Team ${gymName} wishes you a very HAPPY BIRTHDAY 😊.%0AStay Healthy Stay Strong 💪🏻`
-        setMessage(msg2)
+        setMessage(birthdayWish(row.name, gymName))
     }
 
     async function fetchData() {
@@ -68,7 +66,7 @@ const page = (props: Props) => {
                 {
                     SelectedMember &&
                     <CardContent className='space-y-4'>
-                        <p>{message}</p>
+                        <p className='bg-muted rounded-md px-3 py-2 text-sm whitespace-pre-wrap'>{message}</p>
                         <SendWhatsappButton key={message} name={SelectedMember.name} phone={SelectedMember.phone} message={message} label='Send on WhatsApp' />
                     </CardContent>
                 }

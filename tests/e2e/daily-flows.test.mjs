@@ -80,7 +80,7 @@ await step("Pending Payments: the message button sends from the app, not WhatsAp
   await toast(page, "is on its way");
   if (page.context().pages().length !== before) throw new Error("a WhatsApp window opened");
   await page.goto(`${BASE}/whatsapp?tab=log`);
-  await page.getByText(/your payment for PT Monthly of ₹5000 is due/).first().waitFor();
+  await page.getByText(/Balance due: \*₹5,000\*/).first().waitFor();
 });
 await step("Member Attendance: check in", async () => {
   await page.goto(`${BASE}/attendance`);
@@ -89,9 +89,9 @@ await step("Member Attendance: check in", async () => {
 });
 await step("WhatsApp: welcome, invoice and receipt are queued", async () => {
   await page.goto(`${BASE}/whatsapp`); await page.getByRole("tab", { name: "Sent messages" }).click();
-  await page.getByText("thanks for your interest in Alpha Fitness").first().waitFor();
-  await page.getByText(/thank you for joining Alpha Fitness/).first().waitFor();
-  await page.getByText(/we received ₹600/).first().waitFor();
+  await page.getByText(/Thank you for your interest in \*Alpha Fitness\*/).first().waitFor();
+  await page.getByText(/Thank you for choosing \*Alpha Fitness\*/).first().waitFor();
+  await page.getByText(/Payment received, thank you/).first().waitFor();
 });
 await step("WhatsApp: create a workflow and preview it", async () => {
   await page.getByRole("tab", { name: "Workflows" }).click();

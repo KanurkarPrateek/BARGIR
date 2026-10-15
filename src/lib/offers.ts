@@ -50,5 +50,5 @@ export function offerValues(pkg: OfferFields) {
 export function offerSentence(pkg: OfferFields): string {
   const offer = activeOffer(pkg);
   if (!offer) return "";
-  return `Renew now at ${rupees(offer.offerPrice)} (${offer.label}${offer.till ? ` till ${offer.till}` : ""}).`;
+  return `🏷️ Renew now at just ${rupees(offer.offerPrice)} (${offer.label}${offer.till ? ` till ${offer.till}` : ""})`;
 }

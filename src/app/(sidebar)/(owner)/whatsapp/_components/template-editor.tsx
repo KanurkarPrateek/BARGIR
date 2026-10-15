@@ -28,7 +28,7 @@ const SAMPLE: Record<string, string> = {
     offer_price: '₹2,700',
     discount: '10% off',
     valid_till: '31-10-2026',
-    offer: 'Renew now at ₹900 (10% off till 31-10-2026).',
+    offer: '🏷️ Renew now at just ₹900 (10% off till 31-10-2026)',
 }
 
 const TemplateEditor = ({ value, onChange, placeholders, sample }: Props) => {

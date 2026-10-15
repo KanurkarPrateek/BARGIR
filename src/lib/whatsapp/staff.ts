@@ -2,6 +2,7 @@
 import prisma, { currentGymName } from "@/lib/tenant";
 import { format } from "date-fns";
 import { enqueue } from "./queue";
+import { trainerDailyFollowups, trainerNewClient, trainerNewEnquiry } from "./messages";
 
 
 interface Lead {
@@ -28,16 +29,7 @@ export async function notifyTrainerOfEnquiry(enquiry: Lead): Promise<void> {
     {
       name: trainer.name,
       phone: trainer.phone,
-      body: [
-        `${await currentGymName()}: a new enquiry is assigned to you.`,
-        "",
-        `Name: ${enquiry.name}`,
-        `Phone: ${enquiry.phone}`,
-        enquiry.message ? `Note: ${enquiry.message}` : null,
-        enquiry.followupDate ? `Follow up on: ${enquiry.followupDate}` : null,
-      ]
-        .filter((line) => line !== null)
-        .join("\n"),
+      body: trainerNewEnquiry(await currentGymName(), { ...enquiry, phone: enquiry.phone.toString() }),
     },
   ]);
 }
@@ -54,7 +46,7 @@ export async function notifyTrainerOfMember(member: {
     {
       name: trainer.name,
       phone: trainer.phone,
-      body: `${await currentGymName()}: ${member.name} (${member.phone}) is now your client.`,
+      body: trainerNewClient(await currentGymName(), member.name, member.phone.toString()),
     },
   ]);
 }
@@ -84,11 +76,7 @@ export async function sendTrainerFollowupReminders(): Promise<number> {
     [...byTrainer.values()].map((list) => ({
       name: list[0].trainer!.name,
       phone: list[0].trainer!.phone,
-      body: [
-        `${gym}: enquiries to follow up today`,
-        "",
-        ...list.map((enquiry) => `• ${enquiry.name} – ${enquiry.phone}`),
-      ].join("\n"),
+      body: trainerDailyFollowups(gym, list.map((e) => ({ name: e.name, phone: e.phone.toString() }))),
       dedupeKey: `trainer-followups:${list[0].trainer_id}:${today}`,
     }))
   );

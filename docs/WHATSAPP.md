@@ -58,6 +58,10 @@ Every workflow can be edited, switched off or deleted under
 Plan sold (invoice), Payment received (receipt)*, sent *N days before / on the
 day / N days after* where that makes sense.
 
+The starter wording (with emojis and WhatsApp *bold*) lives in
+`src/lib/whatsapp/messages.ts`; each gym can rewrite its own copy under
+**Workflows**. New gyms start with the latest wording.
+
 ### Placeholders
 
 Type these in a message; each person gets their own values.
@@ -71,7 +75,7 @@ Type these in a message; each person gets their own values.
 | `{followup_date}` | Enquiry follow-up date |
 | `{amount}` / `{paid}` / `{due}` | Package price / amount paid / balance |
 | `{invoice_link}` | Link to the printable invoice |
-| `{offer}` | In renewal reminders: "Renew now at ₹900 (10% off till 31-10-2026)." when the package has an offer, otherwise nothing |
+| `{offer}` | In renewal reminders: "🏷️ Renew now at just ₹900 (10% off till 31-10-2026)" when the package has an offer, otherwise nothing |
 | `{package}` / `{price}` / `{offer_price}` / `{discount}` / `{valid_till}` | In offers about a package: its name, normal price, offer price, "10% off", last day |
 
 ## Linking the gym's number

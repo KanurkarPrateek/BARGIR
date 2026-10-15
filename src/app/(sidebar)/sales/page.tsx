@@ -1,4 +1,5 @@
 'use client'
+import { invoiceShare } from '@/lib/whatsapp/messages'
 import { call } from '@/lib/action-result'
 import { useGymName } from '@/hooks/use-gym-name'
 import { SendWhatsappButton } from '@/components/custom/send-whatsapp-button'
@@ -88,7 +89,7 @@ const SalesPage = (props: Props) => {
         <SendWhatsappButton
           name={row.member_name}
           phone={row.member.phone}
-          message={`Hi ${row.member_name}, here is the invoice for your ${row.service_name}. Thank you for choosing ${gymName}. Stay healthy, stay strong!\n\n${typeof window === 'undefined' ? '' : window.location.origin}/invoices/${row.id}`}
+          message={invoiceShare(row.member_name, row.service_name, `${typeof window === 'undefined' ? '' : window.location.origin}/invoices/${row.id}`, gymName)}
         />
       ),
     }

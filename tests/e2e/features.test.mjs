@@ -85,11 +85,11 @@ await step("BackDate Others: an old payment with a past date", async () => {
 });
 await step("no WhatsApp message was queued for any BackDate entry", async () => {
   await page.goto(`${BASE}/whatsapp`); await page.getByRole("tab", { name: "Sent messages" }).click();
-  await page.getByText(/thanks for your interest/).first().waitFor();
+  await page.getByText(/Thank you for your interest/).first().waitFor();
   for (const text of ["Old Expired", "Old Lead", "₹1,234"]) {
     if (await page.locator("div.rounded-lg.border", { hasText: text }).filter({ hasNot: page.getByText("offer") }).count()) {
       const offerOnly = await page.locator("div.rounded-lg.border", { hasText: text }).filter({ hasText: "20% off" }).count();
-      if (offerOnly === 0) throw new Error(`a message mentions ${text}`);
+      if (offerOnly === 0 && !(await page.locator("div.rounded-lg.border", { hasText: text }).filter({ hasText: "Special offer" }).count())) throw new Error(`a message mentions ${text}`);
     }
   }
 });
@@ -137,10 +137,10 @@ await step("Send offer opens WhatsApp Offers with a ready message and sends it b
   await page.locator("div.rounded-lg.border", { hasText: "Monthly Gym" }).first().getByRole("button", { name: "Send offer" }).click();
   await page.waitForURL(/whatsapp\?tab=offers&package=/);
   await page.waitForFunction(() => document.querySelector("textarea")?.value.includes("{offer_price}"));
-  await page.getByText(/for just ₹900 instead of ₹1,000/).first().waitFor();
+  await page.getByText(/now just \*₹900\* ~₹1,000~/).first().waitFor();
   await page.getByRole("button", { name: "Send offer" }).click(); await toast(page, "Offer queued");
   await page.getByRole("tab", { name: "Sent messages" }).click();
-  await page.getByText(/Monthly Gym for just ₹900 instead of ₹1,000 \(10% off\)/).first().waitFor();
+  await page.getByText(/\*Monthly Gym\* now just \*₹900\* ~₹1,000~/).first().waitFor();
 });
 await step("Sales Analytics: totals, charts and Excel download", async () => {
   await page.goto(`${BASE}/analytics`);

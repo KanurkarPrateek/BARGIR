@@ -97,5 +97,9 @@ export function renderTemplate(
   return template
     .replace(/\{(\w+)\}/g, (match, key) => (key in values ? values[key] ?? "" : match))
     // An empty tag such as {offer} must not leave a double space behind.
-    .replace(/[ \t]{2,}/g, " ");
+    .replace(/[ \t]{2,}/g, " ")
+    // ...nor a run of empty lines.
+    .replace(/\n[ \t]+\n/g, "\n\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }

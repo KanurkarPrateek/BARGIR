@@ -1,4 +1,5 @@
 'use client'
+import { paymentReminder } from '@/lib/whatsapp/messages'
 import { useGymName } from '@/hooks/use-gym-name'
 import { GetSalesWithPendingAmount } from '@/action/sales.action'
 import { DataTable } from '@/components/custom/data-table'
@@ -57,7 +58,7 @@ const PendingPayments = ({ }: Props) => {
                 <SendWhatsappButton
                     name={row.member_name}
                     phone={row.member_phone}
-                    message={`Hi ${row.member_name}, your payment for ${row.service_name} of ₹${row.due} is due. Thank you for choosing ${gymName}. Stay healthy, stay strong! 💪`}
+                    message={paymentReminder(row.member_name, row.service_name, row.due, gymName)}
                 />
             ),
         },

@@ -9,6 +9,7 @@ import { Separator } from '@/components/ui/separator'
 import { AUDIENCES, CAMPAIGN_PLACEHOLDERS, CampaignAudience, PACKAGE_PLACEHOLDERS } from '@/lib/whatsapp/constants'
 import { GetAllServices, ServiceResponse } from '@/action/service.action'
 import { activeOffer, offerValues } from '@/lib/offers'
+import { OFFER_TEMPLATES } from '@/lib/whatsapp/messages'
 import { useSearchParams } from 'next/navigation'
 import { format } from 'date-fns'
 import React, { useEffect, useState } from 'react'
@@ -37,9 +38,7 @@ const OffersTab = () => {
         if (!pkg) return
         const offer = activeOffer(pkg)
         setTitle(`${pkg.name} offer`)
-        setTemplate(offer
-            ? `Hi {first_name}! 🎉 Special offer at {gym}: {package} for just {offer_price} instead of {price} ({discount})${offer.till ? '. Valid till {valid_till}' : ''}. Reply here to grab it!`
-            : `Hi {first_name}! Join {gym} with our {package} plan at {price}. Reply here to know more!`)
+        setTemplate(offer ? OFFER_TEMPLATES.withOffer(!!offer.till) : OFFER_TEMPLATES.noOffer)
     }
 
     useEffect(() => {

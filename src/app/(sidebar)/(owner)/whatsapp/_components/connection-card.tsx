@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import type { Connection } from '@/lib/whatsapp/client'
 import React, { useEffect, useState } from 'react'
 import { toast } from 'sonner'
+import { TEST_MESSAGE } from '@/lib/whatsapp/messages'
 
 const LABELS: Record<Connection['state'], string> = {
     connected: 'Connected',
@@ -39,7 +40,7 @@ const ConnectionCard = () => {
 
     const sendTest = async () => {
         try {
-            await call(SendTestMessage(testPhone, 'Test message from your gym software ✅'))
+            await call(SendTestMessage(testPhone, TEST_MESSAGE))
             toast.success('Test message queued')
             setTestPhone('')
         } catch (error: any) {
