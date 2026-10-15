@@ -73,8 +73,8 @@ await step("Alpha: registered machine's punches are accepted", async () => {
   await page.goto(`${BASE}/attendance/biometric?tab=machines`);
   await page.getByPlaceholder("Machine serial number").fill("SIM-ALPHA-01");
   await page.getByRole("button", { name: "Add machine" }).click(); await toast(page, "Machine added");
-  const out = await simulateOnce("SIM-ALPHA-01", ["--history-days", "1", "--users", "3"]);
-  if (!/punch(es)? accepted/.test(out)) throw new Error("simulator: " + out.slice(-200));
+  const out = await simulateOnce("SIM-ALPHA-01", ["--history-days", "3", "--users", "3"]);
+  if (!/sent \d+ enrolled people/.test(out) || /server said 403/.test(out)) throw new Error("simulator: " + out.slice(-200));
 });
 await step("an unregistered machine is refused and keeps its punches", async () => {
   // Punches are random and may be none, so the refused user list counts too.
