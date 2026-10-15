@@ -77,8 +77,10 @@ await step("Alpha: registered machine's punches are accepted", async () => {
   if (!/punch(es)? accepted/.test(out)) throw new Error("simulator: " + out.slice(-200));
 });
 await step("an unregistered machine is refused and keeps its punches", async () => {
-  const out = await simulateOnce("SIM-UNKNOWN-9", ["--history-days", "1", "--users", "2"]);
-  if (!/held on the machine, server said 403/.test(out)) throw new Error(out.slice(-200));
+  // Punches are random and may be none, so the refused user list counts too.
+  const out = await simulateOnce("SIM-UNKNOWN-9", ["--history-days", "3", "--users", "2"]);
+  if (!/server said 403|not accepted yet \(403/.test(out)) throw new Error(out.slice(-200));
+  if (/punch(es)? accepted/.test(out)) throw new Error("an unregistered machine's punches were accepted");
 });
 await step("Beta sees none of Alpha's data", async () => {
   await signIn(page, "9822222222", "password-2222");
