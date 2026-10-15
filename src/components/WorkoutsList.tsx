@@ -1,4 +1,5 @@
 'use client'
+import { exerciseImage } from '@/lib/exercise-images'
 import React, { useState, useMemo } from 'react'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from './ui/badge'
@@ -135,7 +136,7 @@ const ExerciseCard = (exercise: Exercise) => {
             <Card className="overflow-hidden transition-all hover:shadow-lg w-full h-full flex flex-col pt-0">
                 <div className="relative h-48 w-full overflow-hidden">
                     <Image
-                        src={`/exercises/${exercise.images[0]}`}
+                        src={exerciseImage(exercise.images[0])}
                         width={600}
                         height={200}
                         alt={exercise.name}

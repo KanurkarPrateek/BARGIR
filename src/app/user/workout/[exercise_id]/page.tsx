@@ -1,4 +1,5 @@
 import { getExercise } from '@/action/exercise.2.action'
+import { exerciseImage } from '@/lib/exercise-images'
 import React from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -47,7 +48,7 @@ const ExercisePage = ({
                         <Card key={index} className="overflow-hidden p-0">
                             <div className="relative aspect-video flex items-center justify-center">
                                 <img
-                                    src={`/exercises/${image}`}
+                                    src={exerciseImage(image)}
                                     alt={`${exercise.name} - Position ${index + 1}`}
                                     className="object-contain w-full h-full"
                                 />
