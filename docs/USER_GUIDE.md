@@ -7,6 +7,7 @@ front-desk team. Menu names match the left sidebar.
 - [Getting started (about 5 minutes)](#getting-started-about-5-minutes)
 - [First day: set up your gym](#first-day-set-up-your-gym)
 - [Every day at the front desk](#every-day-at-the-front-desk)
+- [Sales Analytics](#sales-analytics)
 - [Universal Search Member](#universal-search-member)
 - [Attendance Management](#attendance-management)
 - [Member Management](#member-management)
@@ -32,7 +33,7 @@ front-desk team. Menu names match the left sidebar.
 | Collect payments, send invoices | ✓ | ✓ |
 | Enroll members on the biometric machine | ✓ | ✓ |
 | Dashboard | ✓ | ✓ (without monthly revenue) |
-| Payment Report, Expense Management | ✓ | — |
+| Sales Analytics, Payment Report, Expense Management | ✓ | — |
 | Package, Trainer and Staff Management | ✓ | — |
 | WhatsApp Management, Gym Settings, Machine Setup | ✓ | — |
 | BlackList a member, delete a sale or payment | ✓ | — |
@@ -110,6 +111,26 @@ WhatsApp welcome messages, invoices, receipts, renewal reminders and birthday
 wishes go out by themselves once WhatsApp is connected. The send buttons on
 Pending Payments, View Subscriptions, Renewal Follow-ups and Birthdays send the
 message straight from the gym's WhatsApp too; nothing opens on the computer.
+
+---
+
+## Sales Analytics
+
+*(owner)* How the business is doing, for any period (this month, last month,
+last 3 months, this year, or your own dates):
+
+- **Headline numbers:** sales value, money collected, new members and renewals,
+  renewal rate (of memberships that ended, how many renewed), average sale,
+  discounts given, outstanding dues, enquiry conversion.
+- **Sold vs collected** for each of the last 12 months (hover for amounts, or
+  *Show as table*).
+- **Sales by package:** value and count sold, share of sales, discount given,
+  and how many members are on each package right now.
+- **Collected by payment mode**, **new vs renewal**, **enquiries by source**
+  with conversion, and **sales by trainer**.
+- **Download Excel** gives every subscription in the period, one row each.
+
+Subscriptions count on their start date; money counts on the day it was received.
 
 ---
 

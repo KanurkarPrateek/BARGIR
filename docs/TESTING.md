@@ -29,7 +29,7 @@ Google Chrome. The runner (`tests/run-e2e.sh`):
 | `multi-gym` (17) | Admin creates gyms; one phone = one login; each gym sees only its own members, packages, sales, payments and machines; machines are routed by serial number; public invoices show the right gym; switched-off gyms cannot sign in |
 | `onboarding` (12) | Self sign-up and duplicate phone refused, all six wizard steps, Excel import with per-row problem report (bad phone, unknown package), running memberships and payments imported with no messages, duplicate import skipped, tap-to-claim machine, setup reminder on the dashboard |
 | `daily-flows` (17) | Packages, trainers (phone validation), enquiry → member → subscription → part payment → collect, enquiry marked Joined, Payment Report, PT clients, check-in, WhatsApp welcome/invoice/receipt queued, workflows, offers, invoice page, every page opens, removed pages are gone |
-| `features` (21) | Universal Search, batches, BackDate member/subscription/enquiry/payment with **no** messages, InActive / Pending Renewal / Dormant lists, staff and staff login, Staff Attendance, expenses and profit, biometric Add → punch → attendance, Block → machine refuses, Unblock, Delete, auto-block switch, BlackList refusing check-in |
+| `features` (22) | Universal Search, batches, BackDate member/subscription/enquiry/payment with **no** messages, InActive / Pending Renewal / Dormant lists, staff and staff login, Staff Attendance, expenses and profit, biometric Add → punch → attendance, Block → machine refuses, Unblock, Delete, auto-block switch, BlackList refusing check-in |
 | `front-desk` (6) | Staff login hides monthly revenue and owner menus, owner pages redirect, desk work still works, removing the login locks them out |
 
 ---
@@ -97,6 +97,16 @@ Tick each line. *Expected* is what should happen.
 | D3 | Member profile → BlackList (give a reason) | Red BlackList notice; listed under BlackList Member |
 | D4 | Member Attendance → check in that member | Refused with the reason |
 | D5 | Remove from BlackList, check in | Works |
+
+### Sales Analytics
+
+| # | Do | Expected |
+|---|---|---|
+| S1 | Sales Analytics → This month | Sales value equals the sum of this month's subscriptions (after discount) in View Subscriptions |
+| S2 | Compare Collected with Payment Report for the same dates | Same amount |
+| S3 | Hover a month in the chart; Show as table | Amounts match |
+| S4 | Download Excel | One row per subscription in the period |
+| S5 | Sign in as front desk, open `/analytics` | Sent back to the dashboard |
 
 ### Staff and expenses
 

@@ -19,7 +19,7 @@ Member) · Enquiry Management · Subscription Management (Add Subscription, View
 Subscriptions, View Pending Renewal, Pending Payments) · Package Management ·
 Trainer Management (PT clients) · BackDate Management
 
-**Add on:** Expense Management (with profit by month and Payment Report) ·
+**Add on:** Sales Analytics (packages, renewals, payment modes, enquiry sources, Excel export) · Expense Management (with profit by month and Payment Report) ·
 WhatsApp Management (automatic workflows, offers, invoices and receipts) ·
 invoice email · Fitness Tools
 

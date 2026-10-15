@@ -6,6 +6,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import {
   IconBuildingStore,
   IconCalendarClock,
+  IconChartBar,
   IconChevronRight,
   IconDashboard,
   IconFingerprint,
@@ -57,6 +58,7 @@ const SECTIONS: { label: string; items: NavItem[] }[] = [
     label: "Management",
     items: [
       { title: "Dashboard", url: "/dashboard", icon: IconDashboard },
+      { title: "Sales Analytics", url: "/analytics", icon: IconChartBar, ownerOnly: true },
       {
         title: "Attendance Management",
         icon: IconUserCheck,

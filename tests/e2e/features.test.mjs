@@ -142,6 +142,18 @@ await step("Send offer opens WhatsApp Offers with a ready message and sends it b
   await page.getByRole("tab", { name: "Sent messages" }).click();
   await page.getByText(/Monthly Gym for just ₹900 instead of ₹1,000 \(10% off\)/).first().waitFor();
 });
+await step("Sales Analytics: totals, charts and Excel download", async () => {
+  await page.goto(`${BASE}/analytics`);
+  await page.getByText("Sold vs collected, last 12 months").waitFor();
+  for (const label of ["Sales value", "Collected", "New members", "Renewal rate", "Outstanding dues", "Enquiry conversion"]) {
+    await page.getByText(label, { exact: true }).first().waitFor();
+  }
+  await page.getByText("Sales by package").waitFor();
+  await page.locator("td", { hasText: "Monthly Gym" }).first().waitFor();
+  await page.getByRole("button", { name: "Show as table" }).click(); await page.getByRole("button", { name: "Show chart" }).waitFor();
+  const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Download Excel" }).click()]);
+  if (!/^sales-.*\.xlsx$/.test(download.suggestedFilename())) throw new Error(download.suggestedFilename());
+});
 let machine;
 await step("Biometric: Add Biometric sends the member to the machine", async () => {
   await page.goto(`${BASE}/attendance/biometric?tab=machines`);

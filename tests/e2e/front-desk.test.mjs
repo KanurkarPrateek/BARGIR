@@ -20,7 +20,7 @@ await step("owner-only menus are hidden", async () => {
   }
 });
 await step("owner-only pages send them back to the dashboard", async () => {
-  for (const path of ["/payments", "/expenses", "/staff", "/settings", "/whatsapp", "/services", "/trainers"]) {
+  for (const path of ["/payments", "/expenses", "/staff", "/settings", "/whatsapp", "/services", "/trainers", "/analytics"]) {
     await page.goto(BASE + path); await page.waitForURL(/dashboard/);
   }
 });
