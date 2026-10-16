@@ -6,7 +6,7 @@ sales team use it; gyms never see it.
 | Screen | What it does |
 |---|---|
 | **Dashboard** | Monthly recurring revenue, money collected, gyms on trial / suspended, renewals overdue or due in 7 days, commission owed, room left on each cluster |
-| **Gyms** | Every gym customer: owner, city, plan and price, next renewal, who sold it, cluster, live usage (members, WhatsApp linked). Create a gym (makes the gym and its owner login on the chosen cluster), link a gym that signed itself up, record payments, suspend / resume / cancel, reset the owner's password |
+| **Gyms** | Every gym customer: owner, city, plan and price, next renewal, who sold it, cluster, live usage (members, WhatsApp linked). Create a gym (makes the gym and its owner login on the chosen cluster), link a gym that signed itself up, record payments, suspend / resume / cancel. **Logins**: every owner and reception (front-desk) login of the gym; add one, change its name, mobile, role or password, or remove it. A gym always keeps one owner. The new login's details are shown once to copy and send |
 | **Billing** | Collected per month, upcoming renewals, recent payments |
 | **Clusters** | Each free set of Vercel + Supabase + Render accounts holding up to N gyms: live health, the gyms on it, the account emails, and every setting (encrypted) ready to paste into Vercel and Render |
 | **Sales team** | Salespeople, their commission %, gyms sold, commission earned / paid / owed, payouts |
@@ -27,6 +27,8 @@ cluster's `/api/platform/*`:
 | `GET /api/platform/gyms` | Gyms on the cluster with members, last activity, WhatsApp linked |
 | `POST /api/platform/gyms` | Create a gym with its owner login |
 | `PATCH /api/platform/gyms/<id>` | Switch sign-in off / on (suspend), reset the owner's password |
+| `GET/POST /api/platform/gyms/<id>/logins` | List the gym's logins, or add one (`role`: `owner` or `staff` = reception) |
+| `PATCH/DELETE /api/platform/gyms/<id>/logins/<loginId>` | Change a login's name, mobile, role or password, or remove it |
 
 Without `PLATFORM_API_KEY` set on a cluster, its API refuses every call.
 

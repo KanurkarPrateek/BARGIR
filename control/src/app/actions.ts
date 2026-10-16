@@ -8,7 +8,7 @@ import type { GymStatus, Plan, Role } from "@prisma/client";
 import { db } from "@/lib/db";
 import { encrypt, hashPassword, verifyPassword } from "@/lib/crypto";
 import { requireAdmin, signIn, signOut } from "@/lib/auth";
-import { ClusterError, createRemoteGym, updateRemoteGym } from "@/lib/cluster-api";
+import { addGymLogin, ClusterError, createRemoteGym, gymLogins, removeGymLogin, updateGymLogin, updateRemoteGym } from "@/lib/cluster-api";
 import { openSecrets, sealSecrets, SECRET_FIELDS, type ClusterSecrets } from "@/lib/cluster-config";
 import { commissionOn, indianMobile, nextRenewal, parseInputDate, PLANS } from "@/lib/business";
 import { addDays } from "date-fns";
@@ -237,6 +237,86 @@ export async function resetOwnerPassword(form: FormData) {
     back(`/gyms/${id}`, errorText(e));
   }
   back(`/gyms/${id}`, `Owner password changed to ${password}. Send it to the owner.`, "ok");
+}
+
+// ---------------- gym logins (owner and reception) ----------------
+
+const ROLE_LABEL = { owner: "Owner", staff: "Reception" } as const;
+
+async function linkedGym(id: string) {
+  const gym = await db.gymAccount.findUnique({ where: { id }, include: { cluster: true } });
+  if (!gym?.remoteId) back(`/gyms/${id}`, "This gym is not linked to its cluster");
+  return gym as typeof gym & { remoteId: string };
+}
+
+// Shows the login just made or changed once on the gym page, to copy and send.
+async function showLogin(gymId: string, appUrl: string, who: { name: string; phone: string; role: "owner" | "staff" }, password: string) {
+  const note = `${who.name} (${ROLE_LABEL[who.role]})\nSign in: ${appUrl}/signin\nMobile: ${who.phone}\nPassword: ${password}`;
+  (await cookies()).set(`login_note_${gymId}`, note, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: `/gyms/${gymId}`, maxAge: 600 });
+}
+
+export async function addLogin(form: FormData) {
+  await requireAdmin();
+  const gym = await linkedGym(text(form, "id"));
+  const path = `/gyms/${gym.id}`;
+  const name = text(form, "name");
+  const phone = indianMobile(form.get("phone"));
+  const role = text(form, "role") === "owner" ? "owner" : "staff";
+  const password = String(form.get("password") ?? "");
+  if (!name) back(path, "Enter the person's name");
+  if (!phone) back(path, "Mobile must be a 10-digit Indian number");
+  if (password.length < 8) back(path, "Password needs at least 8 characters");
+  try {
+    await addGymLogin(gym.cluster, gym.remoteId, { name, phone, role, password });
+  } catch (e) {
+    back(path, errorText(e));
+  }
+  await showLogin(gym.id, gym.cluster.appUrl, { name, phone, role }, password);
+  back(path, `${ROLE_LABEL[role]} login added for ${name}`, "ok");
+}
+
+export async function updateLogin(form: FormData) {
+  await requireAdmin();
+  const gym = await linkedGym(text(form, "id"));
+  const path = `/gyms/${gym.id}`;
+  const userId = text(form, "user_id");
+  const name = text(form, "name");
+  const phone = indianMobile(form.get("phone"));
+  const role = text(form, "role") === "owner" ? "owner" : "staff";
+  const password = String(form.get("password") ?? "");
+  if (!name) back(path, "Enter the person's name");
+  if (!phone) back(path, "Mobile must be a 10-digit Indian number");
+  if (password && password.length < 8) back(path, "Password needs at least 8 characters");
+  let before;
+  try {
+    before = (await gymLogins(gym.cluster, gym.remoteId)).find((l) => l.id === userId);
+  } catch (e) {
+    back(path, errorText(e));
+  }
+  if (!before) back(path, "That login no longer exists");
+  try {
+    await updateGymLogin(gym.cluster, gym.remoteId, userId, { name, phone, role, ...(password ? { password } : {}) });
+  } catch (e) {
+    back(path, errorText(e));
+  }
+  // The gym's record here follows its owner's mobile.
+  if (before.role === "owner" && role === "owner" && before.phone === gym.ownerPhone && phone !== gym.ownerPhone) {
+    await db.gymAccount.update({ where: { id: gym.id }, data: { ownerPhone: phone, ownerName: name } });
+  }
+  if (password) await showLogin(gym.id, gym.cluster.appUrl, { name, phone, role }, password);
+  back(path, password ? `Login for ${name} saved with the new password; they are signed out on other devices` : `Login for ${name} saved`, "ok");
+}
+
+export async function removeLogin(form: FormData) {
+  await requireAdmin();
+  const gym = await linkedGym(text(form, "id"));
+  const path = `/gyms/${gym.id}`;
+  try {
+    await removeGymLogin(gym.cluster, gym.remoteId, text(form, "user_id"));
+  } catch (e) {
+    back(path, errorText(e));
+  }
+  back(path, "Login removed; that person can no longer sign in", "ok");
 }
 
 export async function deleteGymRecord(form: FormData) {

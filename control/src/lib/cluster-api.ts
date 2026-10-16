@@ -58,3 +58,19 @@ export const createRemoteGym = (c: ClusterRef, gym: { name: string; ownerName: s
   request<{ id: string; name: string }>(c, "/gyms", { method: "POST", body: JSON.stringify(gym) });
 export const updateRemoteGym = (c: ClusterRef, id: string, change: { active?: boolean; ownerPassword?: string }) =>
   request<{ ok: true }>(c, `/gyms/${id}`, { method: "PATCH", body: JSON.stringify(change) });
+
+// Logins of one gym: "owner" (everything) or "staff" (reception / front desk).
+export interface RemoteLogin {
+  id: string;
+  name: string;
+  phone: string;
+  role: "owner" | "staff";
+  createdAt: string;
+}
+export const gymLogins = async (c: ClusterRef, gymId: string) => (await request<{ logins: RemoteLogin[] }>(c, `/gyms/${gymId}/logins`)).logins;
+export const addGymLogin = (c: ClusterRef, gymId: string, login: { name: string; phone: string; role: string; password: string }) =>
+  request<{ id: string }>(c, `/gyms/${gymId}/logins`, { method: "POST", body: JSON.stringify(login) });
+export const updateGymLogin = (c: ClusterRef, gymId: string, userId: string, change: { name?: string; phone?: string; role?: string; password?: string }) =>
+  request<{ ok: true }>(c, `/gyms/${gymId}/logins/${userId}`, { method: "PATCH", body: JSON.stringify(change) });
+export const removeGymLogin = (c: ClusterRef, gymId: string, userId: string) =>
+  request<{ ok: true }>(c, `/gyms/${gymId}/logins/${userId}`, { method: "DELETE" });

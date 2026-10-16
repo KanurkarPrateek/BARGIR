@@ -4,9 +4,9 @@ import { cookies } from "next/headers";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { newPassword as generatePassword } from "@/lib/crypto";
-import { clusterGyms, type RemoteGym } from "@/lib/cluster-api";
+import { clusterGyms, gymLogins, type RemoteGym, type RemoteLogin } from "@/lib/cluster-api";
 import { day, inputDate, nextRenewal, planLabel, PLANS, renewalState, rupees } from "@/lib/business";
-import { deleteGymRecord, deletePayment, recordPayment, resetOwnerPassword, setGymStatus, updateGym } from "../../../actions";
+import { addLogin, deleteGymRecord, deletePayment, recordPayment, removeLogin, setGymStatus, updateGym, updateLogin } from "../../../actions";
 import { Badge, btn, btnDanger, btnOutline, Card, Field, Notice, PageTitle, Stat } from "@/components/ui";
 import { ConfirmButton, CopyButton } from "@/components/client";
 
@@ -23,7 +23,17 @@ export default async function GymPage({ params, searchParams }: { params: Promis
   } catch (e) {
     remoteError = e instanceof Error ? e.message : "Cluster unreachable";
   }
-  const newPassword = admin ? (await cookies()).get(`new_login_${gym.id}`)?.value : undefined;
+  const cookieStore = await cookies();
+  const newPassword = admin ? cookieStore.get(`new_login_${gym.id}`)?.value : undefined;
+  const loginNote = admin ? cookieStore.get(`login_note_${gym.id}`)?.value : undefined;
+  let logins: RemoteLogin[] | undefined, loginsError: string | undefined;
+  if (admin && remote) {
+    try {
+      logins = await gymLogins(gym.cluster, remote.id);
+    } catch (e) {
+      loginsError = e instanceof Error ? e.message : "Cluster unreachable";
+    }
+  }
   const s = renewalState(gym);
   const paid = gym.payments.reduce((sum, p) => sum + p.amount, 0);
 
@@ -99,14 +109,69 @@ export default async function GymPage({ params, searchParams }: { params: Promis
                     <ConfirmButton message="Remove this gym from the Control Panel? Its payments here are deleted too. The gym's data on the cluster is kept." className={btnDanger}>Remove from Control Panel</ConfirmButton></form>
                 )}
               </div>
-              <form action={resetOwnerPassword} className="flex flex-wrap items-end gap-2">
-                <input type="hidden" name="id" value={gym.id} />
-                <div className="min-w-48 flex-1"><Field label="Set a new owner password" hint="Only if the owner forgot theirs. At least 8 characters."><input name="password" minLength={8} required autoComplete="new-password" placeholder={`e.g. ${generatePassword()}`} /></Field></div>
-                <ConfirmButton message="Change the owner's password? Tell them the new one." className={btnOutline}>Reset password</ConfirmButton>
-              </form>
             </div>
           </Card>
         </div>
+      )}
+
+      {admin && (
+        <Card title="Logins" description="Who can sign in to this gym. Owner: everything. Reception: members, enquiries, attendance and sales, but no money reports, expenses, staff or settings. A changed password, role or removed login signs that person out within a minute.">
+          {loginNote && (
+            <div className="mb-4 rounded-md border border-emerald-300 bg-emerald-50 p-3 dark:border-emerald-800 dark:bg-emerald-950">
+              <p className="mb-2 text-sm font-medium">Send this login now. It is shown only for the next few minutes.</p>
+              <pre className="mb-3 rounded-md bg-white p-3 text-sm dark:bg-stone-900">{loginNote}</pre>
+              <CopyButton text={loginNote} label="Copy login details" />
+            </div>
+          )}
+          {!logins ? <p className="text-sm text-amber-700 dark:text-amber-400">{loginsError ?? remoteError ?? "Not linked to a gym on the cluster."}</p> : (
+            <div className="space-y-5">
+              <table>
+                <thead><tr><th>Name</th><th>Mobile</th><th>Role</th><th></th></tr></thead>
+                <tbody>
+                  {logins.map((l) => (
+                    <tr key={l.id}>
+                      <td>{l.name}</td>
+                      <td className="tabular-nums">{l.phone}</td>
+                      <td><Badge tone={l.role === "owner" ? "green" : "blue"}>{l.role === "owner" ? "Owner" : "Reception"}</Badge></td>
+                      <td className="text-right">
+                        <details className="inline-block text-left">
+                          <summary className="cursor-pointer text-sm underline">Change</summary>
+                          <form action={updateLogin} className="mt-3 grid min-w-72 gap-3 rounded-md border p-3 sm:grid-cols-2">
+                            <input type="hidden" name="id" value={gym.id} />
+                            <input type="hidden" name="user_id" value={l.id} />
+                            <Field label="Name"><input name="name" required defaultValue={l.name} /></Field>
+                            <Field label="Mobile"><input name="phone" required defaultValue={l.phone} /></Field>
+                            <Field label="Role"><select name="role" defaultValue={l.role}><option value="owner">Owner</option><option value="staff">Reception</option></select></Field>
+                            <Field label="New password" hint="Leave empty to keep it"><input name="password" minLength={8} autoComplete="new-password" placeholder={`e.g. ${generatePassword()}`} /></Field>
+                            <div className="flex flex-wrap gap-2 sm:col-span-2">
+                              <button className={btn}>Save</button>
+                            </div>
+                          </form>
+                          <form action={removeLogin} className="mt-2">
+                            <input type="hidden" name="id" value={gym.id} />
+                            <input type="hidden" name="user_id" value={l.id} />
+                            <ConfirmButton message={`Remove ${l.name}'s login? They can no longer sign in. Their data stays.`} className="text-xs text-red-600 underline">Remove login</ConfirmButton>
+                          </form>
+                        </details>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <form action={addLogin} className="space-y-3 border-t pt-4">
+                <input type="hidden" name="id" value={gym.id} />
+                <p className="text-sm font-medium">Add a login</p>
+                <div className="grid gap-3 sm:grid-cols-4">
+                  <Field label="Name"><input name="name" required placeholder="e.g. Pooja Shinde" /></Field>
+                  <Field label="Mobile"><input name="phone" required placeholder="10-digit number" /></Field>
+                  <Field label="Role"><select name="role" defaultValue="staff"><option value="staff">Reception</option><option value="owner">Owner</option></select></Field>
+                  <Field label="Password" hint="At least 8 characters"><input name="password" required minLength={8} autoComplete="new-password" defaultValue={generatePassword()} /></Field>
+                </div>
+                <button className={btnOutline}>Add login</button>
+              </form>
+            </div>
+          )}
+        </Card>
       )}
 
       <Card title="Payments">

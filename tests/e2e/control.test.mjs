@@ -88,11 +88,38 @@ await step("suspend: the gym cannot sign in; resume: it can", async () => {
   await page.goto(gymUrl); await page.getByRole("button", { name: "Resume" }).click(); await ok("Gym is active");
   await signIn(page, "9811100099", ownerPassword); await page.waitForURL(/setup|dashboard/);
 });
-await step("reset the owner's password", async () => {
+await step("Logins: change the owner's password", async () => {
   await controlSignIn(ADMIN.email, ADMIN.password); await page.waitForURL(CONTROL + "/");
-  await page.goto(gymUrl); await field("Set a new owner password").fill("new-pass-12345");
-  await page.getByRole("button", { name: "Reset password" }).click(); await ok("Owner password changed");
+  await page.goto(gymUrl);
+  const row = page.locator("tr", { hasText: "9811100099" });
+  await row.getByText("Change").click();
+  await row.locator("input[name=password]").fill("new-pass-12345");
+  await row.getByRole("button", { name: "Save" }).click(); await ok("saved with the new password");
+  await page.getByText("Password: new-pass-12345").waitFor();
   await signIn(page, "9811100099", "new-pass-12345"); await page.waitForURL(/setup|dashboard/);
+});
+await step("Logins: add a reception login, which signs in without owner menus", async () => {
+  await controlSignIn(ADMIN.email, ADMIN.password); await page.waitForURL(CONTROL + "/");
+  await page.goto(gymUrl);
+  const add = page.locator("form", { hasText: "Add a login" });
+  await add.locator("input[name=name]").fill("Riya Desk"); await add.locator("input[name=phone]").fill("9811100077");
+  await add.locator("input[name=password]").fill("desk-pass-123");
+  await add.getByRole("button", { name: "Add login" }).click(); await ok("Reception login added");
+  const role = await page.locator("tr", { hasText: "9811100077" }).locator("td").nth(2).textContent();
+  if (role?.trim() !== "Reception") throw new Error(`role shows ${role}`);
+  await signIn(page, "9811100077", "desk-pass-123"); await page.waitForURL(/dashboard/);
+  if (await page.getByRole("link", { name: "Gym Settings" }).count()) throw new Error("reception sees Gym Settings");
+});
+await step("Logins: the only owner cannot be removed; a removed login cannot sign in", async () => {
+  await controlSignIn(ADMIN.email, ADMIN.password); await page.waitForURL(CONTROL + "/");
+  await page.goto(gymUrl);
+  const owner = page.locator("tr", { hasText: "9811100099" });
+  await owner.getByText("Change").click(); await owner.getByRole("button", { name: "Remove login" }).click();
+  await error("only owner login");
+  const desk = page.locator("tr", { hasText: "9811100077" });
+  await desk.getByText("Change").click(); await desk.getByRole("button", { name: "Remove login" }).click();
+  await ok("Login removed");
+  await signIn(page, "9811100077", "desk-pass-123"); await page.getByText("Wrong phone number or password").first().waitFor();
 });
 await step("link a gym that already existed on the cluster", async () => {
   await controlSignIn(ADMIN.email, ADMIN.password); await page.waitForURL(CONTROL + "/");

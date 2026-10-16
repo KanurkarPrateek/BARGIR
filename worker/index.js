@@ -184,8 +184,14 @@ async function startSession(gymId) {
             log.info({ gymId }, "WhatsApp unlinked from the phone");
           } else if (code === DisconnectReason.connectionReplaced) {
             // Another copy of this service (a deploy in progress) took over the
-            // number. Reconnecting would make the two keep kicking each other off.
-            log.warn({ gymId }, "connection taken over by another sender, not reconnecting");
+            // number. Reconnecting at once would make the two keep kicking each
+            // other off; after a minute the old copy has normally been shut
+            // down, so try once more then (the other copy, if still running,
+            // simply waits its own minute).
+            log.warn({ gymId }, "connection taken over by another sender, retrying in a minute");
+            setTimeout(() => {
+              if (!sessions.has(gymId)) startSession(gymId).catch(() => {});
+            }, 60 * 1000);
           } else if (state.creds.registered || state.creds.me) {
             // A linked number dropped its connection; get it back.
             log.info({ gymId, code }, "connection closed, reconnecting");
