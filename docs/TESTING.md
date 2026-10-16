@@ -26,9 +26,9 @@ Google Chrome. The runner (`tests/run-e2e.sh`):
 
 | Suite | What it proves |
 |---|---|
-| `multi-gym` (18) | Admin creates gyms; one phone = one login; each gym sees only its own members, packages, sales, payments and machines; machines are routed by serial number; public invoices show the right gym; switched-off gyms cannot sign in |
+| `multi-gym` (19) | Admin creates gyms; one phone = one login; each gym sees only its own members, packages, sales, payments and machines; machines are routed by serial number; invoices and PDFs open only for their own gym (not signed out, not another gym; the sender with its key); invoices show the right gym's details; switched-off gyms cannot sign in |
 | `onboarding` (12) | Self sign-up and duplicate phone refused, all six wizard steps, Excel import with per-row problem report (bad phone, unknown package), running memberships and payments imported with no messages, duplicate import skipped, tap-to-claim machine, setup reminder on the dashboard |
-| `daily-flows` (18) | Packages, trainers (phone validation), enquiry → member → subscription → part payment → collect, enquiry marked Joined, Payment Report, PT clients, check-in, WhatsApp welcome/invoice/receipt queued, workflows, offers, invoice page and PDF, every page opens, removed pages are gone |
+| `daily-flows` (19) | Packages, trainers (phone validation), enquiry → member → subscription → part payment → collect, enquiry marked Joined, Payment Report, PT clients, check-in, WhatsApp welcome/invoice/receipt queued, workflows, offers, invoice page and PDF, no invoice links in messages, Send on View Subscriptions sends the PDF, every page opens, removed pages are gone |
 | `features` (24) | Universal Search, batches, BackDate member/subscription/enquiry/payment with **no** messages, InActive / Pending Renewal / Dormant lists, staff and staff login, Staff Attendance, expenses and profit, biometric Add → punch → attendance, Block → machine refuses, Unblock, Delete, auto-block switch, BlackList refusing check-in |
 | `control` (14) | Control Panel against the test app: wrong cluster key reported, cluster health and settings to paste, new gym created on the cluster with a working owner login, duplicate owner phone refused, payment moves the renewal and books 10% commission, suspend blocks sign-in and resume restores it, owner password reset, linking a gym that signed itself up, MRR and capacity, a salesperson sees only their own gyms, commission payout |
 | `front-desk` (6) | Staff login hides monthly revenue and owner menus, owner pages redirect, desk work still works, removing the login locks them out |
@@ -87,7 +87,7 @@ Tick each line. *Expected* is what should happen.
 | C6 | View Enquiry | The enquiry is under Joined |
 | C7 | Payment Report → Today | Cash ₹400, UPI ₹600 |
 | C8 | View Subscriptions → delete that sale | Refused: payments exist |
-| C9 | Open the invoice link signed out | Gym logo, address and GST printed |
+| C9 | Open the invoice page signed in, then the same address signed out | Signed in: gym logo, address and GST printed. Signed out: sent to sign-in |
 | C10 | Download PDF on the invoice (or PDF on the member profile) | A one-page PDF with ₹ amounts, payments received, and PAID when nothing is due |
 | C11 | Gym Settings → Choose image (a coloured logo) → Save; open an invoice and its PDF | Header band, table header and Balance Due in the logo's colour; text readable on it |
 
@@ -146,7 +146,7 @@ uses your own number as the member's number.
 |---|---|---|
 | W1 | WhatsApp Management → Send test to your number | "Test message from your gym software ✅" |
 | W2 | Add Enquiry | Welcome message with your gym's name |
-| W3 | Add Subscription with part payment | Invoice message with plan, paid, balance, link, and the invoice PDF attached |
+| W3 | Add Subscription with part payment | The invoice PDF, with plan, paid and balance as its caption; no link |
 | W4 | Collect the balance | Receipt message |
 | W5 | Add Subscription whose end date is 3 days away (BackDate Renew Subscription with the right start date), then Workflows → **Run now** | "…ends on <date>" reminder (runs only 9 AM–9 PM) |
 | W6 | Same with an end date of yesterday → Run now | "…ended on <date>" message |

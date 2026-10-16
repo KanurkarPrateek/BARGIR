@@ -79,8 +79,10 @@ Do these once, in this order. Each takes a minute or two.
 1. **Sign in** at `/signin` with the phone number and password the platform admin gave you.
 2. **Gym Settings** → add your logo, address, contact number, GST number and invoice terms.
    These print on every invoice and appear in WhatsApp messages. When you choose a logo,
-   its main colour becomes the **brand colour** of your invoices (header band, totals,
-   accents); change it with the colour picker, or **Default** for dark grey.
+   its main colour becomes your **brand colour**: the app itself (your logo large at the
+   top of the menu, buttons and the selected menu item in your colour, the logo in the
+   top bar on phones) and your invoices (header band, totals, accents). Change it with
+   the colour picker, or **Default** for dark grey.
 3. **Package Management → Add Package** → one entry per plan you sell
    (name, price, months). Switch on *Personal training package* for PT plans.
 4. **Trainer Management** → add your trainers with their WhatsApp numbers.
@@ -217,10 +219,12 @@ status (Open → Trial → Joined / Lost) or the trainer right in the list.
 and balance are worked out for you. Enter what was paid now (0 if paying
 later) and how (cash, UPI, card, bank transfer). For PT packages, pick the
 trainer. After saving, the invoice goes to the member on WhatsApp as a PDF (and
-by email with the PDF attached, if they have an email). The invoice page also has
-**Download PDF**.
+by email with the PDF attached, if they have an email). Members get the file
+itself, never a link. The invoice page (for your staff only) also has
+**Download PDF** and **Print Invoice**.
 
-**View Subscriptions** — every sale. A sale with payments on it cannot be
+**View Subscriptions** — every sale. **Send** sends that invoice PDF to the
+member on WhatsApp again. A sale with payments on it cannot be
 deleted until the payments are removed from the member's Payments tab.
 
 **View Pending Renewal** — same as the Pending Renewal list in View Member.

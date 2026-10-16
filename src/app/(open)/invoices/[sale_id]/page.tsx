@@ -27,15 +27,6 @@ const Page = ({ params }: { params: any }) => {
                     >
                         Print Invoice
                     </Button>
-                    <Button
-                        onClick={()=>navigator.share({ 
-                            title: "Sales Invoice", 
-                            text: `Dear customer, below is the link to the invoice for your recent purchase. Thank you for choosing us.\n\nLink: ${window.location.href}`, 
-                        })}
-                        className="bg-blue-600 hover:bg-blue-700 text-white"
-                    >
-                        Share
-                    </Button>
                 </div>
             </div>
             <div className='overflow-hidden rounded-lg border border-gray-200 shadow-sm'>
@@ -56,8 +47,9 @@ type Gym = { name: string; address: string; phone: string; email: string; gstin:
 // payments received and the terms.
 const Invoice = ({ ref, sale_id }: { ref: any, sale_id: string }) => {
     const [sale, setSale] = React.useState<ExpandedSalesResponse & { gym: Gym; payments: { date: string; mode: string; amount: number }[] }>()
+    const [missing, setMissing] = React.useState(false)
     useEffect(() => {
-        GetSaleWithExpand(sale_id).then(setSale)
+        GetSaleWithExpand(sale_id).then((found) => found ? setSale(found) : setMissing(true))
     }, [sale_id])
 
     const gym = sale?.gym
@@ -65,6 +57,8 @@ const Invoice = ({ ref, sale_id }: { ref: any, sale_id: string }) => {
     const number = sale ? `INV-${sale.id.slice(0, 8).toUpperCase()}` : ''
     const total = sale ? sale.amount - sale.discount : 0
     const due = sale ? Math.max(0, total - sale.paid) : 0
+
+    if (missing) return <p ref={ref} className='p-10 text-center text-gray-600'>Invoice not found.</p>
 
     return (
         // Keep the colours when printing.

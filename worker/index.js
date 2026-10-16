@@ -205,16 +205,23 @@ const markFailed = (id, error) =>
     String(error).slice(0, 300),
   ]);
 
+// The invoice PDF from the app, which hands it over only with our key. Tried
+// twice (a sleeping app can be slow to wake); without it the message fails,
+// so a member never gets the text without their invoice.
 async function fetchDocument(url) {
-  try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(30000) });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const name = /filename="([^"]+)"/.exec(res.headers.get("content-disposition") ?? "")?.[1];
-    return { buffer: Buffer.from(await res.arrayBuffer()), fileName: name ?? "Invoice.pdf" };
-  } catch (error) {
-    console.warn(`Could not fetch ${url}: ${error.message}; sending text only`);
-    return null;
+  let problem;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const res = await fetch(url, { headers: { "x-api-key": API_KEY }, signal: AbortSignal.timeout(30000) });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const name = /filename="([^"]+)"/.exec(res.headers.get("content-disposition") ?? "")?.[1];
+      return { buffer: Buffer.from(await res.arrayBuffer()), fileName: name ?? "Invoice.pdf" };
+    } catch (error) {
+      problem = error;
+      await sleep(3000);
+    }
   }
+  throw new Error(`Could not get the invoice PDF (${problem.message}); press Retry failed`);
 }
 
 // The digits of a WhatsApp id ("9198…:12@s.whatsapp.net" -> "9198…").
@@ -272,8 +279,7 @@ async function sendOne(session, message) {
   const pdf = message.document ? await fetchDocument(message.document) : null;
   await session.sock.sendMessage(
     found.jid,
-    // The invoice goes as a PDF with the message as its caption. If the PDF
-    // cannot be fetched the text still goes; it carries the invoice link.
+    // The invoice goes as a PDF with the message as its caption.
     pdf ? { document: pdf.buffer, mimetype: "application/pdf", fileName: pdf.fileName, caption: message.body } : { text: message.body }
   );
   await db.query(

@@ -1,7 +1,5 @@
 'use client'
-import { invoiceShare } from '@/lib/whatsapp/messages'
 import { call } from '@/lib/action-result'
-import { useGymName } from '@/hooks/use-gym-name'
 import { SendWhatsappButton } from '@/components/custom/send-whatsapp-button'
 import { GetAllMembers } from '@/action/member.action'
 import { DeleteSaleById, GetAllSalesWithExpand, SalesResponse } from '@/action/sales.action'
@@ -42,7 +40,6 @@ const columns = [
 ]
 
 const SalesPage = (props: Props) => {
-    const gymName = useGymName()
   const [salesList, setSalesList] = React.useState<SalesResponse[]>([])
   const { showLoading, hideLoading, isLoading } = useLoading()
   const router = useRouter()
@@ -89,7 +86,7 @@ const SalesPage = (props: Props) => {
         <SendWhatsappButton
           name={row.member_name}
           phone={row.member.phone}
-          message={invoiceShare(row.member_name, row.service_name, `${typeof window === 'undefined' ? '' : window.location.origin}/invoices/${row.id}`, gymName)}
+          invoiceFor={row.id}
         />
       ),
     }

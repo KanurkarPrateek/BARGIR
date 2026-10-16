@@ -231,22 +231,36 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     GetSessionInfo().then(setSession);
   }, []);
   const isStaff = session?.role === "staff";
+  const brand = session?.gymBrandColor ?? null;
   const visible = (item: { ownerOnly?: boolean }) => !(isStaff && item.ownerOnly);
 
   return (
     <Sidebar collapsible="offcanvas" {...props}>
       <SidebarHeader>
         <SidebarMenu>
-          <SidebarMenuItem className="flex justify-between items-center">
-            <SidebarMenuButton asChild className="data-[slot=sidebar-menu-button]:!p-1.5">
-              <Link href="/dashboard">
-                {session?.gymLogo
-                  ? <img src={session.gymLogo} alt="" className="size-6 rounded object-contain" />
-                  : <IconInnerShadowTop className="!size-5" />}
-                <span className="text-base font-semibold">{session?.gymName ?? "Gym"}</span>
+          <SidebarMenuItem>
+            {/* The gym's brand: its logo large on a band of its colour. */}
+            <div
+              className="relative overflow-hidden rounded-xl border"
+              style={{ background: brand ? `color-mix(in oklab, ${brand} 12%, transparent)` : undefined }}
+            >
+              <div className="h-1.5" style={{ background: brand ?? "var(--sidebar-primary)" }} />
+              <div className="absolute right-1.5 top-3">
+                <ModeToggle />
+              </div>
+              <Link href="/dashboard" className="flex flex-col items-center gap-2 px-3 pb-4 pt-4 text-center">
+                {session?.gymLogo ? (
+                  <div className="rounded-xl bg-white p-1.5 shadow-sm">
+                    <img src={session.gymLogo} alt="" className="size-20 object-contain" />
+                  </div>
+                ) : (
+                  <div className="flex size-20 items-center justify-center rounded-xl bg-sidebar-primary text-sidebar-primary-foreground">
+                    <IconInnerShadowTop className="!size-10" />
+                  </div>
+                )}
+                <span className="line-clamp-2 text-lg font-bold leading-tight">{session?.gymName ?? "Gym"}</span>
               </Link>
-            </SidebarMenuButton>
-            <ModeToggle />
+            </div>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>

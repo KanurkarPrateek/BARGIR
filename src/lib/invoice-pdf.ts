@@ -25,6 +25,10 @@ function loadFonts() {
   return fonts;
 }
 
+// Where the WhatsApp sender fetches the PDF. Only the gym's own staff, or the
+// sender with its key, can open it (src/app/(open)/invoices/[sale_id]/pdf).
+export const invoicePdfUrl = (saleId: string, appUrl: string) => `${appUrl}/invoices/${saleId}/pdf`;
+
 export const invoiceNumber = (saleId: string) => `INV-${saleId.slice(0, 8).toUpperCase()}`;
 
 const DEFAULT_TERMS =

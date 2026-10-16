@@ -277,7 +277,7 @@ export async function RetryFailedMessages(): Promise<number> {
 }
 
 // A one-off message typed or chosen by staff (payment reminder, renewal
-// reminder, birthday wish, invoice link), sent from the gym's own linked
+// reminder, birthday wish), sent from the gym's own linked
 // WhatsApp number through the same queue as the automatic messages.
 export async function SendWhatsappMessage(name: string, phone: string, body: string): Promise<void | Failed> {
   return safe(async () => {

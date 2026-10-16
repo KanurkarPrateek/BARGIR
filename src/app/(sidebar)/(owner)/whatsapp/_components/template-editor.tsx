@@ -22,7 +22,6 @@ const SAMPLE: Record<string, string> = {
     amount: '₹1,500',
     paid: '₹1,000',
     due: '₹500',
-    invoice_link: 'https://yourgym.app/invoices/…',
     package: 'Quarterly',
     price: '₹3,000',
     offer_price: '₹2,700',

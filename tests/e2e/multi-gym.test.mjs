@@ -99,16 +99,24 @@ await step("Beta cannot claim Alpha's machine", async () => {
 await step("Beta cannot open Alpha's member by link", async () => {
   await page.goto(`${BASE}/members/${memberId}`); await page.getByText("Member not found.").waitFor();
 });
-await step("public invoice shows Alpha's own details without login", async () => {
-  await page.context().clearCookies(); await page.goto(invoiceUrl);
+await step("Alpha's invoice and PDF cannot be opened by Beta or signed out", async () => {
+  await page.goto(invoiceUrl); await page.getByText("Invoice not found.").waitFor();
+  if ((await page.request.get(invoiceUrl + "/pdf")).status() !== 404) throw new Error("Beta got Alpha's PDF");
+  await page.context().clearCookies(); await page.goto(invoiceUrl); await page.waitForURL(/signin/);
+  if ((await page.request.get(invoiceUrl + "/pdf")).status() !== 404) throw new Error("PDF opened signed out");
+  const sender = await page.request.get(invoiceUrl + "/pdf", { headers: { "x-api-key": "test" } });
+  if (sender.status() !== 200) throw new Error(`the WhatsApp sender got ${sender.status()}`);
+});
+await step("Alpha's invoice shows its own details", async () => {
+  await signIn(page, "9811111111", "password-1111"); await page.waitForURL(/dashboard|setup/);
+  await page.goto(invoiceUrl);
   await page.getByText("12 MG Road, Pune").waitFor(); await page.getByText("GSTIN: 27ABCDE1234F1Z5").waitFor();
 });
 await step("brand colour from Gym Settings colours the invoice", async () => {
-  await signIn(page, "9811111111", "password-1111"); await page.waitForURL(/dashboard|setup/);
   await page.goto(`${BASE}/settings`); await page.getByRole("button", { name: "Choose image" }).and(page.locator(":enabled")).waitFor();
   await page.locator("input[placeholder='#1f2937']").fill("#0e7c66");
   await page.getByRole("button", { name: "Save", exact: true }).click(); await page.waitForTimeout(1500);
-  await page.context().clearCookies(); await page.goto(invoiceUrl); await page.getByText("Billed to").waitFor();
+  await page.goto(invoiceUrl); await page.getByText("Billed to").waitFor();
   const band = await page.locator("h2", { hasText: "INVOICE" }).evaluate((el) => getComputedStyle(el.parentElement.parentElement).backgroundColor);
   if (band !== "rgb(14, 124, 102)") throw new Error(`invoice band is ${band}`);
 });

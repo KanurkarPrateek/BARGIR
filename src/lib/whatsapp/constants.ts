@@ -57,16 +57,16 @@ export const TRIGGERS: {
   {
     value: "sale_created",
     label: "Plan sold (invoice)",
-    description: "Sent right away when a plan is sold, with a link to the invoice.",
+    description: "Sent right away when a plan is sold, with the invoice PDF attached.",
     hasOffset: false,
-    placeholders: ["name", "first_name", "gym", "service", "amount", "paid", "due", "expiry_date", "invoice_link"],
+    placeholders: ["name", "first_name", "gym", "service", "amount", "paid", "due", "expiry_date"],
   },
   {
     value: "payment_received",
     label: "Payment received (receipt)",
     description: "Sent right away when a balance payment is collected.",
     hasOffset: false,
-    placeholders: ["name", "first_name", "gym", "service", "paid", "due", "invoice_link"],
+    placeholders: ["name", "first_name", "gym", "service", "paid", "due"],
   },
 ];
 
@@ -88,6 +88,12 @@ export function describeOffset(offsetDays: number): string {
   if (offsetDays === 0) return "on the day";
   const n = Math.abs(offsetDays);
   return `${n} day${n === 1 ? "" : "s"} ${offsetDays < 0 ? "before" : "after"}`;
+}
+
+// Invoices now go only as a PDF; workflows saved before that may still have
+// a line with the old {invoice_link} tag, which is dropped.
+export function withoutInvoiceLink(template: string): string {
+  return template.replace(/\n*[^\n]*\{invoice_link\}[^\n]*/g, "");
 }
 
 export function renderTemplate(

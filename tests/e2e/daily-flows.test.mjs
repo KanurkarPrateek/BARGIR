@@ -127,6 +127,14 @@ await step("invoice PDF: downloads, and is attached to the WhatsApp invoice", as
   for (const e of emails) if (!/^Invoice-INV-.*\.pdf$/.test(e.attachments?.[0]?.filename ?? "")) throw new Error("invoice email without the PDF");
   await page.goto(`${BASE}/whatsapp?tab=log`);
   await page.locator("div.rounded-lg.border", { hasText: "Amit" }).filter({ hasText: /Thank you for choosing/ }).getByText("📎 Invoice PDF attached").first().waitFor();
+  if (await page.getByText("/invoices/").count()) throw new Error("a message still carries an invoice link");
+});
+await step("View Subscriptions: Send sends the invoice PDF", async () => {
+  await page.goto(`${BASE}/sales`);
+  await page.locator("tr", { hasText: "Amit Shah" }).first().getByTitle("Send on WhatsApp").click();
+  await toast(page, "is on its way");
+  await page.goto(`${BASE}/whatsapp?tab=log`);
+  await page.locator("div.rounded-lg.border", { hasText: /Here is the invoice for your/ }).getByText("📎 Invoice PDF attached").first().waitFor();
 });
 await step("every main page opens without crashing", async () => {
   for (const p of ["/dashboard", "/members", "/members/batches", "/sales", "/sales/followups", "/enquiries/followups", "/members/birthdays", "/tools", "/attendance/history", "/staff-attendance", "/backdate", "/expenses", "/staff", "/settings", "/sales/pending-payments"]) {

@@ -2,7 +2,8 @@ import prisma, { currentGymName } from "@/lib/tenant";
 import { addDays, format, parse, startOfDay } from "date-fns";
 import { appUrl } from "@/lib/app-url";
 import { rupees, saleDue } from "@/lib/membership";
-import { renderTemplate } from "./constants";
+import { renderTemplate, withoutInvoiceLink } from "./constants";
+import { invoicePdfUrl } from "@/lib/invoice-pdf";
 import { offerSentence } from "@/lib/offers";
 import { OutgoingMessage, enqueue } from "./queue";
 
@@ -173,14 +174,13 @@ export async function runSaleWorkflows(
     paid: rupees(paidNow),
     due: rupees(saleDue(sale)),
     expiry_date: sale.endDate,
-    invoice_link: `${await appUrl()}/invoices/${sale.id}`,
   };
-  const document = `${await appUrl()}/invoices/${sale.id}/pdf`;
+  const document = invoicePdfUrl(sale.id, await appUrl());
   return enqueue(
     workflows.map((workflow) => ({
       name: sale.member.name,
       phone: sale.member.phone,
-      body: renderTemplate(workflow.template, values),
+      body: renderTemplate(withoutInvoiceLink(workflow.template), values),
       document,
       dedupeKey: key ? `${workflow.id}:${key}` : undefined,
       workflow_id: workflow.id,

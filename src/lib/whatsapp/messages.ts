@@ -68,8 +68,6 @@ Thank you for choosing *{gym}*! 💪🎉
 ⏳ Balance: {due}
 📅 Valid till: {expiry_date}
 
-📄 Invoice: {invoice_link}
-
 Let's crush those goals together! 🔥`,
 
   receipt: `Hi {first_name} ✅
@@ -79,8 +77,6 @@ Payment received, thank you! 🙏
 💰 Amount: {paid}
 📦 Plan: {service}
 ⏳ Balance: {due}
-
-📄 Invoice: {invoice_link}
 
 — Team {gym} 💪`,
 };
@@ -116,11 +112,11 @@ A gentle reminder from *${gym}* 🙏
 
 You can pay at the front desk or reply here. Thank you! 💪`;
 
-export const invoiceShare = (name: string, service: string, link: string, gym: string) => `Hi ${name} 🙏
+// Sent as the caption of the invoice PDF.
+export const invoiceShare = (name: string, service: string, gym: string) => `Hi ${name} 🙏
 
 Thank you for choosing *${gym}*! 💪
-🧾 Here is the invoice for your *${service}*:
-${link}
+🧾 Here is the invoice for your *${service}*.
 
 Stay healthy, stay strong! 🔥`;
 

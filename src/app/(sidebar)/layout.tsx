@@ -5,6 +5,8 @@ import {
     SidebarProvider,
 } from "@/components/ui/sidebar"
 import { getSession } from "@/lib/session"
+import base from "@/lib/prisma"
+import { brandColors, normalizeHex } from "@/lib/brand"
 import { redirect } from "next/navigation"
 
 
@@ -13,6 +15,20 @@ async function Layout({ children }: { children: React.ReactNode }) {
     const session = await getSession()
     if (!session) redirect("/signin")
     if (!session.gymId) redirect("/admin/gyms")
+    const gym = await base.gym.findUnique({ where: { id: session.gymId }, select: { logo: true, brandColor: true } })
+
+    // The gym's brand colour (Gym Settings) for buttons, the active menu item
+    // and focus rings; the app's own blue when none is set.
+    const brand = normalizeHex(gym?.brandColor)
+    const c = brandColors(brand)
+    const theme = brand ? `
+:root, .dark {
+  --primary: ${c.brand}; --primary-foreground: ${c.onBrand}; --ring: ${c.brand};
+  --sidebar-primary: ${c.brand}; --sidebar-primary-foreground: ${c.onBrand}; --sidebar-ring: ${c.brand};
+  --sidebar-accent: color-mix(in oklab, ${c.brand} 16%, transparent);
+  --brand: ${c.brand}; --on-brand: ${c.onBrand};
+}
+:root { --sidebar-accent-foreground: ${c.ink}; }` : ""
 
     return (
             <SidebarProvider
@@ -23,9 +39,10 @@ async function Layout({ children }: { children: React.ReactNode }) {
                     } as React.CSSProperties
                 }
                 >
+                {theme && <style>{theme}</style>}
                 <AppSidebar variant="inset" />
                 <SidebarInset>
-                    <SiteHeader />
+                    <SiteHeader logo={gym?.logo ?? null} />
                     <div className="flex flex-1 flex-col">
                         <div className="@container/main flex flex-1 flex-col gap-2">
                             <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">

@@ -2,7 +2,6 @@
 // without RESEND_API_KEY nothing is sent and the rest of the app is unaffected.
 import base from "@/lib/prisma";
 import prisma from "@/lib/tenant";
-import { appUrl } from "@/lib/app-url";
 import { rupees, saleDue } from "@/lib/membership";
 import { buildInvoicePdf } from "@/lib/invoice-pdf";
 
@@ -32,7 +31,6 @@ export async function sendInvoiceEmail(saleId: string): Promise<EmailResult> {
   if (!sale || !isEmail(sale.member.email)) return { status: "skipped", reason: "no-email" };
   const gym = await base.gym.findUnique({ where: { id: sale.gym_id } });
   const gymName = gym?.name ?? "Your gym";
-  const link = `${await appUrl()}/invoices/${sale.id}`;
 
   const row = (label: string, value: string) =>
     `<tr><td style="padding:6px 16px 6px 0;color:#666">${label}</td><td style="padding:6px 0"><strong>${escapeHtml(value)}</strong></td></tr>`;
@@ -49,7 +47,6 @@ export async function sendInvoiceEmail(saleId: string): Promise<EmailResult> {
     ${row("Paid", rupees(sale.paid))}
     ${row("Balance", rupees(saleDue(sale)))}
   </table>
-  <p><a href="${link}" style="background:#111;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none">View or print your invoice</a></p>
   <p style="color:#666;font-size:13px;margin-top:24px">${[gym?.address, gym?.phone ? `+91 ${gym.phone}` : null].filter(Boolean).map((part) => escapeHtml(String(part))).join(" · ")}</p>
 </div>`;
 

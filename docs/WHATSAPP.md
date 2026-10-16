@@ -39,14 +39,16 @@ them without messaging real members by mistake.
 | Receipt when a payment is collected | Right after a balance payment dated today | The member |
 
 The invoice and receipt messages arrive with the **invoice as a PDF** attached
-(the message text is its caption). If the PDF cannot be fetched, the text still
-goes, with the invoice link.
+(the message text is its caption). Members never get a link: the invoice page
+and its PDF open only for the gym's own staff (and for the sender, with its key).
+If the PDF cannot be fetched, the message is marked *Failed* rather than sent
+without the invoice; press **Retry failed**.
 
 Trainers additionally get: a message when an enquiry or member is assigned to
 them, and one daily list of the enquiries they must follow up.
 
 **Sent by staff with one tap:** the send buttons on Pending Payments (payment
-reminder), View Subscriptions (invoice link), Renewal Follow-ups and Birthdays go
+reminder), View Subscriptions (invoice PDF), Renewal Follow-ups and Birthdays go
 through the same queue from the gym's number; no WhatsApp window opens.
 
 **Offer audiences:** active members, pending renewal (ending soon or ended in the
@@ -78,7 +80,6 @@ Type these in a message; each person gets their own values.
 | `{expiry_date}` | Membership end date |
 | `{followup_date}` | Enquiry follow-up date |
 | `{amount}` / `{paid}` / `{due}` | Package price / amount paid / balance |
-| `{invoice_link}` | Link to the printable invoice |
 | `{offer}` | In renewal reminders: "🏷️ Renew now at just ₹900 (10% off till 31-10-2026)" when the package has an offer, otherwise nothing |
 | `{package}` / `{price}` / `{offer_price}` / `{discount}` / `{valid_till}` | In offers about a package: its name, normal price, offer price, "10% off", last day |
 
@@ -131,6 +132,7 @@ against a stand-in sender on a separate database.
 | Messages stuck on *Waiting* | Number not linked, or sender down | Link the number; they send within seconds |
 | *Failed: This number is not on WhatsApp* | The member's number has no WhatsApp | Correct the number on the member |
 | *Failed: Not sent within 24 hours* | WhatsApp was unlinked for a day | **Retry failed** after linking, if still relevant |
+| *Failed: Could not get the invoice PDF* | The app was asleep or down when the sender asked for the PDF | **Retry failed** |
 | *Failed: No reply from WhatsApp* | Slow reply; may or may not have been delivered | Check with the member before retrying |
 
 ## Limits

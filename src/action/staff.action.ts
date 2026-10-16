@@ -24,6 +24,7 @@ export interface SessionInfo {
   gymId: string | null;
   gymName: string | null;
   gymLogo: string | null;
+  gymBrandColor: string | null;
 }
 
 const sameText = (a: string, b: string) => {
@@ -69,7 +70,7 @@ export async function GetSessionInfo(): Promise<SessionInfo | null> {
   const session = await getSession();
   if (!session) return null;
   const gym = session.gymId
-    ? await base.gym.findUnique({ where: { id: session.gymId }, select: { name: true, logo: true } })
+    ? await base.gym.findUnique({ where: { id: session.gymId }, select: { name: true, logo: true, brandColor: true } })
     : null;
   return {
     name: session.name,
@@ -77,6 +78,7 @@ export async function GetSessionInfo(): Promise<SessionInfo | null> {
     gymId: session.gymId,
     gymName: gym?.name ?? null,
     gymLogo: gym?.logo ?? null,
+    gymBrandColor: gym?.brandColor ?? null,
   };
 }
 

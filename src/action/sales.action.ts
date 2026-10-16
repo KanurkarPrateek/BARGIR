@@ -2,10 +2,14 @@
 
 import { Failed } from "@/lib/action-result";
 import { UserError, safe } from "@/lib/safe-action";
-import prisma, { requireGymId, requireOwnTrainer , requireOwner } from "@/lib/tenant";
+import prisma, { currentGymName, requireGymId, requireOwnTrainer , requireOwner } from "@/lib/tenant";
 import publicPrisma from "@/lib/prisma";
 import { EmailResult, sendInvoiceEmail } from "@/lib/email";
 import { runSaleWorkflows } from "@/lib/whatsapp/workflows";
+import { enqueue } from "@/lib/whatsapp/queue";
+import { invoiceShare } from "@/lib/whatsapp/messages";
+import { invoicePdfUrl } from "@/lib/invoice-pdf";
+import { appUrl } from "@/lib/app-url";
 import { restoreToMachines } from "@/lib/biometric-commands";
 import {
   format,
@@ -222,6 +226,24 @@ export async function ResendInvoice(sale_id: string): Promise<InvoiceDelivery | 
   });
 }
 
+// Staff pressing Send on View Subscriptions: the invoice PDF on WhatsApp,
+// with a short caption, whether or not the invoice workflow is on.
+export async function SendInvoiceOnWhatsapp(sale_id: string): Promise<void | Failed> {
+  return safe(async () => {
+    const sale = await prisma.sales.findUnique({
+      where: { id: sale_id },
+      include: { member: true, service: { select: { name: true } } },
+    });
+    if (!sale) throw new UserError("Sale not found");
+    await enqueue([{
+      name: sale.member.name,
+      phone: sale.member.phone,
+      body: invoiceShare(sale.member.name, sale.service.name, await currentGymName()),
+      document: invoicePdfUrl(sale.id, await appUrl()),
+    }]);
+  });
+}
+
 // 10. GetAllSalesWithExpand
 export async function GetAllSalesWithExpand(): Promise<
   ExpandedSalesResponse[]
@@ -379,7 +401,8 @@ export async function GetSalesEndingInXdays(
 // signed-in gym; the sale id is an unguessable uuid.
 export async function GetSaleWithExpand(sale_id: string): Promise<any> {
   try {
-    const sale = await publicPrisma.sales.findUnique({
+    // Only the gym's own staff can open its invoices.
+    const sale = await prisma.sales.findUnique({
       where: { id: sale_id },
       include: {
         member: {
