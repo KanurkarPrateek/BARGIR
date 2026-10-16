@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
     if (table === "ATTLOG") {
       const { received } = await ingestPunches(device.serial, body);
       const stamp = params.get("Stamp");
-      if (stamp) {
+      if (stamp && /^\d{1,20}$/.test(stamp)) {
         await base.biometricDevice.update({
           where: { serial: device.serial },
           data: { attlogStamp: stamp },

@@ -1,6 +1,7 @@
 'use client'
 import { call } from '@/lib/action-result'
 import { DeleteEnquiry, EnquiryResponse, GetAllEnquiry, UpdateEnquiry } from '@/action/enquiries.action'
+import { GetSessionInfo } from '@/action/staff.action'
 import { TrainerSelect } from '@/components/custom/trainer-select'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -24,9 +25,13 @@ const EnquiryPage = () => {
     const [filter, setFilter] = useState('pending')
     const [search, setSearch] = useState('')
 
+    // Only the owner can delete; the front desk marks an enquiry as lost.
+    const [isOwner, setIsOwner] = useState(false)
+
     const load = async () => setEnquiries(await GetAllEnquiry())
     useEffect(() => {
         load()
+        GetSessionInfo().then((s) => setIsOwner(!!s && s.role !== 'staff'))
     }, [])
 
     const update = async (id: string, data: Parameters<typeof UpdateEnquiry>[1]) => {
@@ -40,8 +45,12 @@ const EnquiryPage = () => {
 
     const remove = async (enquiry: EnquiryResponse) => {
         if (!confirm(`Delete the enquiry from ${enquiry.name}?`)) return
-        await DeleteEnquiry(enquiry.id)
-        load()
+        try {
+            await call(DeleteEnquiry(enquiry.id))
+            load()
+        } catch (error: any) {
+            toast.error(error.message)
+        }
     }
 
     const activeFilter = FILTERS.find((f) => f.value === filter)!
@@ -104,7 +113,7 @@ const EnquiryPage = () => {
                                     <Button size='sm'>Make member</Button>
                                 </Link>
                             )}
-                            <Button size='sm' variant='ghost' className='text-destructive' onClick={() => remove(enquiry)}>Delete</Button>
+                            {isOwner && <Button size='sm' variant='ghost' className='text-destructive' onClick={() => remove(enquiry)}>Delete</Button>}
                         </span>
                     </div>
                 </div>

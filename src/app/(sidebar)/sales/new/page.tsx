@@ -1,7 +1,7 @@
 'use client'
 import { call } from '@/lib/action-result'
 import { GetAllMembers, MemberResponse } from '@/action/member.action'
-import { AddSales, SalesInput } from '@/action/sales.action'
+import { AddSales, GetRenewalStartDate, SalesInput } from '@/action/sales.action'
 import { GetAllServices, ServiceResponse } from '@/action/service.action'
 import { DatePickerDemo } from '@/components/custom/date-picker'
 import ItemSelector from '@/components/custom/item-selector'
@@ -43,6 +43,22 @@ const page = ({ searchParams }: { searchParams: any }) => {
         backdated,
         paymentDate: today(),
     })
+    // Bumped when the start date is filled in for staff, so the picker shows it.
+    const [startKey, setStartKey] = React.useState(0)
+    const [renewalStart, setRenewalStart] = React.useState<string | null>(null)
+    // Renewing before the current plan ends: start the day after it ends
+    // instead of today, so no days are lost. Staff can still pick another date.
+    useEffect(() => {
+        if (backdated) return
+        let stale = false
+        GetRenewalStartDate(formState.member_id).then((start) => {
+            if (stale) return
+            setRenewalStart(start)
+            setFormState((prev) => ({ ...prev, startDate: start ?? today() }))
+            setStartKey((k) => k + 1)
+        }).catch(() => {})
+        return () => { stale = true }
+    }, [formState.member_id])
     useEffect(() => {
         async function fetchData() {
             setMembers(await GetAllMembers())
@@ -74,6 +90,10 @@ const page = ({ searchParams }: { searchParams: any }) => {
         }
         if (formState.amount <= 0) {
             toast.error('Amount must be greater than zero')
+            return
+        }
+        if (formState.discount > formState.amount) {
+            toast.error('Discount is more than the plan price')
             return
         }
         if (due < 0) {
@@ -132,9 +152,13 @@ const page = ({ searchParams }: { searchParams: any }) => {
                     Start Date <span className="text-destructive">*</span>
                 </Label>
                 <DatePickerDemo
+                    key={startKey}
                     defaultDate={formState.startDate}
                     onDateChange={(e) => handleInputChange(e, "startDate")}
                 />
+                {renewalStart && formState.startDate === renewalStart && (
+                    <p className="text-muted-foreground text-sm">Their current plan is still running, so this starts the day after it ends.</p>
+                )}
             </div>
             <div className="space-y-2">
                 <Label>

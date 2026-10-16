@@ -1,5 +1,5 @@
 import prisma, { currentGymName } from "@/lib/tenant";
-import { addDays, format, parse, startOfDay } from "date-fns";
+import { addDays, format, isLeapYear, parse, startOfDay } from "date-fns";
 import { appUrl } from "@/lib/app-url";
 import { rupees, saleDue } from "@/lib/membership";
 import { renderTemplate, withoutInvoiceLink } from "./constants";
@@ -128,8 +128,11 @@ export async function runScheduledWorkflows(
       }
 
       if (workflow.trigger === "birthday") {
+        // Born on 29 Feb: wished on 28 Feb in years without a 29th.
+        const days = [eventDate.slice(0, 5)];
+        if (days[0] === "28-02" && !isLeapYear(eventDay)) days.push("29-02");
         const members = await prisma.member.findMany({
-          where: { DOB: { startsWith: eventDate.slice(0, 5) } },
+          where: { OR: days.map((day) => ({ DOB: { startsWith: day } })) },
         });
         for (const member of members) {
           messages.push({

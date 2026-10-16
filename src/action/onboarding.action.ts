@@ -4,12 +4,13 @@
 // the setup wizard's one-click starters, and importing an existing member
 // register from Excel.
 import base from "@/lib/prisma";
-import prisma, { requireGymId, requireOwner } from "@/lib/tenant";
+import prisma, { isOwner, requireGymId, requireOwner } from "@/lib/tenant";
+import { Prisma } from "@prisma/client";
 import { Failed } from "@/lib/action-result";
 import { UserError, safe } from "@/lib/safe-action";
 import { normalizeIndianMobile, requireIndianMobile } from "@/lib/phone";
 import { getSession, hashPassword, setSession } from "@/lib/session";
-import { createDefaultWorkflows } from "@/lib/whatsapp/defaults";
+import { DEFAULTS } from "@/lib/whatsapp/defaults";
 import { DATE_FORMAT } from "@/lib/membership";
 import { addMonths, format, isValid, parse } from "date-fns";
 
@@ -26,15 +27,26 @@ export async function SignUpGym(data: { gymName: string; ownerName: string; phon
     if (await base.user.findUnique({ where: { phone } })) {
       throw new UserError("This phone number already has an account. Sign in instead.");
     }
-    const gym = await base.gym.create({
-      data: {
-        name: data.gymName.trim(),
-        phone,
-        users: { create: { name: data.ownerName.trim(), phone, passwordHash: hashPassword(data.password), role: "owner" } },
-      },
-      include: { users: true },
+    // Gym, owner login and starter workflows are saved together, so a failure
+    // part way never leaves a half-made gym behind.
+    const gym = await base.$transaction(async (tx) => {
+      const gym = await tx.gym.create({
+        data: {
+          name: data.gymName.trim(),
+          phone,
+          users: { create: { name: data.ownerName.trim(), phone, passwordHash: hashPassword(data.password), role: "owner" } },
+        },
+        include: { users: true },
+      });
+      await tx.whatsappWorkflow.createMany({ data: DEFAULTS.map((workflow) => ({ ...workflow, gym_id: gym.id })) });
+      return gym;
+    }).catch((error) => {
+      // Two sign-ups with the same phone at the same moment.
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+        throw new UserError("This phone number already has an account. Sign in instead.");
+      }
+      throw error;
     });
-    await createDefaultWorkflows(gym.id);
     await setSession({ userId: gym.users[0].id, name: gym.users[0].name, role: "owner", gymId: gym.id });
     return "/setup";
   });
@@ -132,6 +144,28 @@ export interface ImportResult {
 
 const DATE_INPUTS = ["dd-MM-yyyy", "dd/MM/yyyy", "yyyy-MM-dd", "d-M-yyyy", "d/M/yyyy", "dd.MM.yyyy"];
 
+// Amounts as people type them: "2000", "₹2,000", "Rs. 1,500", "2000/-".
+// Rounded to whole rupees; null when present but not a usable amount.
+function toRupees(value: number | string | undefined): number | null | undefined {
+  const text = value?.toString().trim();
+  if (!text) return undefined;
+  const cleaned = text
+    .replace(/^(₹|rs\.?|inr)\s*/i, "")
+    .replace(/\s*\/-$/, "")
+    .replace(/,/g, "")
+    .trim();
+  if (!/^\d+(\.\d+)?$/.test(cleaned)) return null;
+  return Math.round(Number(cleaned));
+}
+
+// Member codes only need to be unique within the gym. A random one is tried
+// and, if another save took it first, the whole row is saved again.
+const newMemberCode = () => `MEM${(Math.floor(Math.random() * 999999) + 1).toString().padStart(7, "0")}`;
+const isCodeTaken = (error: unknown) =>
+  error instanceof Prisma.PrismaClientKnownRequestError &&
+  error.code === "P2002" &&
+  String(error.meta?.target ?? "").includes("memberCode");
+
 function toDate(value: string | undefined): string | null | undefined {
   const text = value?.toString().trim();
   if (!text) return undefined;
@@ -166,7 +200,9 @@ export async function ImportMembers(rows: ImportRow[], firstRow: number): Promis
       const pkgName = row.package?.toString().trim();
       const pkg = pkgName ? byName.get(pkgName.toLowerCase()) : undefined;
       if (pkgName && !pkg) { problem(`Package "${pkgName}" does not exist; add it under Package Management first`); continue; }
-      const paid = Math.max(0, Math.trunc(Number(row.paid ?? 0)) || 0);
+      const paidAmount = toRupees(row.paid);
+      if (paidAmount === null) { problem(`Paid "${row.paid}" is not an amount; use a number like 2000`); continue; }
+      const paid = paidAmount ?? 0;
       if (pkg && paid > pkg.price) { problem(`Paid ₹${paid} is more than the package price ₹${pkg.price}`); continue; }
       if (await prisma.member.findFirst({ where: { name: { equals: name, mode: "insensitive" }, phone: BigInt(phone) } })) {
         problem("Already a member (same name and phone); skipped");
@@ -178,37 +214,47 @@ export async function ImportMembers(rows: ImportRow[], firstRow: number): Promis
         continue;
       }
       const gender = (row.gender ?? "").toString().trim().toLowerCase();
-      try {
-      const member = await prisma.member.create({
-        data: {
-          name: name.replace(/\b\w/g, (c) => c.toUpperCase()),
-          phone: BigInt(phone),
-          email: row.email?.toString().trim() || null,
-          gender: gender.startsWith("m") ? "male" : gender.startsWith("f") ? "female" : "other",
-          DOB: dob ?? "",
-          DOJ: joinDate ?? startDate ?? format(new Date(), DATE_FORMAT),
-          memberCode: `MEM${Math.floor(Math.random() * 9_000_000 + 1_000_000)}`,
-          biometricId: machineId,
-        },
-      });
-      result.created++;
-      if (pkg) {
-        const start = startDate ?? joinDate ?? format(new Date(), DATE_FORMAT);
-        await prisma.sales.create({
+      // The member and their running package are saved together: if the sale
+      // fails the member is not left behind (a re-import would skip them).
+      const save = () => prisma.$transaction(async (tx) => {
+        const member = await tx.member.create({
           data: {
-            member_id: member.id,
-            service_id: pkg.id,
-            amount: pkg.price,
-            discount: 0,
-            paid,
-            startDate: start,
-            endDate: format(addMonths(parse(start, DATE_FORMAT, new Date()), pkg.duration), DATE_FORMAT),
-            description: "Imported",
-            payments: paid > 0 ? { create: { gym_id, member_id: member.id, amount: paid, mode: "cash", date: start, note: "Imported" } } : undefined,
+            name: name.replace(/\b\w/g, (c) => c.toUpperCase()),
+            phone: BigInt(phone),
+            email: row.email?.toString().trim() || null,
+            gender: gender.startsWith("m") ? "male" : gender.startsWith("f") ? "female" : "other",
+            DOB: dob ?? "",
+            DOJ: joinDate ?? startDate ?? format(new Date(), DATE_FORMAT),
+            memberCode: newMemberCode(),
+            biometricId: machineId,
           },
         });
-        result.withSubscription++;
-      }
+        if (pkg) {
+          const start = startDate ?? joinDate ?? format(new Date(), DATE_FORMAT);
+          await tx.sales.create({
+            data: {
+              member_id: member.id,
+              service_id: pkg.id,
+              amount: pkg.price,
+              discount: 0,
+              paid,
+              startDate: start,
+              endDate: format(addMonths(parse(start, DATE_FORMAT, new Date()), pkg.duration), DATE_FORMAT),
+              description: "Imported",
+              payments: paid > 0 ? { create: { gym_id, member_id: member.id, amount: paid, mode: "cash", date: start, note: "Imported" } } : undefined,
+            },
+          });
+        }
+      });
+      try {
+        for (let attempt = 1; ; attempt++) {
+          try { await save(); break; } catch (error) {
+            if (isCodeTaken(error) && attempt < 5) continue;
+            throw error;
+          }
+        }
+        result.created++;
+        if (pkg) result.withSubscription++;
       } catch (error) {
         console.error("Import row failed:", error);
         problem("Could not be saved; check this row and try again");
@@ -221,6 +267,8 @@ export async function ImportMembers(rows: ImportRow[], firstRow: number): Promis
 // ---------- machines that contacted the server but nobody has claimed ----------
 
 export async function GetUnclaimedMachines(): Promise<{ serial: string; lastSeenAt: Date | null }[]> {
+  // Only the gym owner can claim one, so nobody else is shown the list.
+  if (!(await isOwner())) return [];
   // Only machines seen in the last 15 minutes: the one this gym just set up.
   return base.biometricDevice.findMany({
     where: { gym_id: "", lastSeenAt: { gte: new Date(Date.now() - 15 * 60 * 1000) } },

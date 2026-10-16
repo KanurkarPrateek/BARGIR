@@ -5,7 +5,7 @@ import {
     SidebarProvider,
 } from "@/components/ui/sidebar"
 import { getSession } from "@/lib/session"
-import base from "@/lib/prisma"
+import { gymBrand } from "@/lib/gym-brand"
 import { brandColors, normalizeHex } from "@/lib/brand"
 import { redirect } from "next/navigation"
 
@@ -15,7 +15,7 @@ async function Layout({ children }: { children: React.ReactNode }) {
     const session = await getSession()
     if (!session) redirect("/signin")
     if (!session.gymId) redirect("/admin/gyms")
-    const gym = await base.gym.findUnique({ where: { id: session.gymId }, select: { logo: true, brandColor: true } })
+    const gym = await gymBrand(session.gymId)
 
     // The gym's brand colour (Gym Settings) for buttons, the active menu item
     // and focus rings; the app's own blue when none is set.
@@ -42,7 +42,7 @@ async function Layout({ children }: { children: React.ReactNode }) {
                 {theme && <style>{theme}</style>}
                 <AppSidebar variant="inset" />
                 <SidebarInset>
-                    <SiteHeader logo={gym?.logo ?? null} />
+                    <SiteHeader logo={gym?.logoUrl ?? null} />
                     <div className="flex flex-1 flex-col">
                         <div className="@container/main flex flex-1 flex-col gap-2">
                             <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">

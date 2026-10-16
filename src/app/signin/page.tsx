@@ -44,7 +44,7 @@ const SignInPage = () => {
                         </div>
                         <Button type='submit' disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}</Button>
                         <p className='text-muted-foreground text-center text-sm'>
-                            New gym? <Link href='/signup' className='underline'>Start here</Link> · Gym member? <Link href='/login' className='underline'>Member login</Link>
+                            New gym? <Link href='/signup' className='underline'>Start here</Link>
                         </p>
                     </form>
                 </CardContent>

@@ -4,7 +4,7 @@ import { Failed } from "@/lib/action-result";
 import { UserError, safe } from "@/lib/safe-action";
 import base from "@/lib/prisma";
 import prisma, { requireGymId, requireOwner } from "@/lib/tenant";
-import { commandFor, nextMachineId, queueForAllMachines } from "@/lib/biometric-commands";
+import { commandFor, nextMachineId, queueForAllMachines, requireMachineId } from "@/lib/biometric-commands";
 import { FILE_IMPORT_SERIAL, applyPunches, ingestPunches } from "@/lib/biometric";
 import { networkInterfaces } from "os";
 
@@ -149,8 +149,9 @@ export async function LinkBiometricId(
   kind: PersonKind = "member"
 ): Promise<number | Failed> {
   return safe(async () => {
-    pin = pin.trim();
+    pin = String(pin ?? "").trim();
     if (!pin) throw new UserError("Enter the ID used on the machine");
+    requireMachineId(pin);
 
     const holder = await holderOf(pin);
     if (holder && holder.id !== personId) {
@@ -240,6 +241,7 @@ export async function RemoveMemberFromMachines(member_id: string): Promise<void 
 // machine IDs when linking an existing machine's people to members.
 export async function RequestMachineUserList(): Promise<number | Failed> {
   return safe(async () => {
+    await requireOwner();
     const machines = await queueForAllMachines("Send the list of enrolled people", commandFor.listUsers());
     if (machines === 0) throw new UserError("Add your biometric machine first");
     return machines;
@@ -263,6 +265,7 @@ export async function ImportPunchFile(
   content: string
 ): Promise<{ received: number; attendance: number } | Failed> {
   return safe(async () => {
+    await requireOwner();
     const result = await ingestPunches(FILE_IMPORT_SERIAL, content);
     if (result.received === 0) {
       throw new UserError("No punches found. Export the attendance log (attlog .dat) from the machine.");
@@ -272,9 +275,11 @@ export async function ImportPunchFile(
 }
 
 // Delete Biometric: removes the person from every machine and frees their
-// machine ID in the software. Past attendance is kept.
+// machine ID in the software. Past attendance is kept. Owner only: a freed ID
+// can be handed to someone else. Front desk uses Block instead.
 export async function DeleteFromMachines(personId: string, kind: PersonKind): Promise<void | Failed> {
   return safe(async () => {
+    await requireOwner();
     const person =
       kind === "member"
         ? await prisma.member.findUnique({ where: { id: personId }, select: { name: true, biometricId: true } })

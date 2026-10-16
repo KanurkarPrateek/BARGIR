@@ -85,14 +85,17 @@ export async function GetAllServices(): Promise<ServiceResponse[]> {
 }
 
 // 5. DeleteServiceById
-export async function DeleteServiceById(id: string): Promise<void> {
-    try {
+// Owner only. A package that has been sold stays, so past sales keep it.
+export async function DeleteServiceById(id: string): Promise<void | Failed> {
+    return safe(async () => {
+        await requireOwner();
+        if (await prisma.sales.count({ where: { service_id: id } })) {
+            throw new UserError('This package has been sold, so it cannot be deleted');
+        }
         await prisma.services.delete({
             where: { id },
         });
-    } catch (error:any) {
-        throw new UserError(`Failed to delete service: ${ error.message }`);
-    }
+    });
 }
 
 // Marks an existing plan as a personal training package (or not).

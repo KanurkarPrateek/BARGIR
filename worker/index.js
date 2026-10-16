@@ -37,6 +37,14 @@ const MIN_GAP_MS = 3000;
 const MAX_GAP_MS = 6000;
 // Messages that could not go out for this long are dropped, not sent late.
 const STALE_AFTER_HOURS = 24;
+// A message taken for sending this long ago without being marked sent is
+// failed, never sent again, since it may already have reached the member.
+const STUCK_AFTER_MINUTES = 10;
+// Reminders and offers go out only between these hours, India time.
+const DAY_STARTS_AT = 9;
+const DAY_ENDS_AT = 21;
+// Workflows that answer something the member just did go out at any hour.
+const IMMEDIATE_TRIGGERS = ["enquiry_created", "sale_created", "payment_received"];
 
 if (!API_KEY) throw new Error("WHATSAPP_WORKER_KEY is required");
 if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is required");
@@ -49,6 +57,29 @@ const db = new pg.Pool({
   ssl: isLocalDb ? false : { rejectUnauthorized: false },
 });
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// A failed database write or a WhatsApp hiccup must not take every gym down.
+process.on("unhandledRejection", (reason) => {
+  log.error({ err: reason?.message ?? String(reason) }, "unhandled rejection");
+});
+process.on("uncaughtException", (error) => {
+  // The process is in an unknown state; log it and let the host restart us.
+  log.fatal({ err: error.message, stack: error.stack }, "uncaught exception");
+  process.exit(1);
+});
+
+// India has no daylight saving, so its hour is UTC + 5:30 on any server.
+const indiaHour = () => new Date(Date.now() + 330 * 60 * 1000).getUTCHours();
+const isQuietHours = () => indiaHour() < DAY_STARTS_AT || indiaHour() >= DAY_ENDS_AT;
+
+// Only the app's own address gets our key along with the request.
+const APP_ORIGIN = (() => {
+  try {
+    return APP_URL ? new URL(APP_URL).origin : "";
+  } catch {
+    return "";
+  }
+})();
 
 // ---------- WhatsApp login stored in the database ----------
 
@@ -127,36 +158,44 @@ async function startSession(gymId) {
       markOnlineOnConnect: false,
     });
     session.sock = sock;
-    sock.ev.on("creds.update", saveCreds);
+    sock.ev.on("creds.update", () => void saveCredsWithRetry(gymId, saveCreds));
 
     sock.ev.on("connection.update", async ({ connection, lastDisconnect, qr }) => {
-      if (qr) {
-        session.state = "qr";
-        session.qr = await QRCode.toDataURL(qr, { margin: 1, width: 320 });
-      }
-      if (connection === "open") {
-        session.state = "connected";
-        session.qr = null;
-        session.number = sock.user?.id?.split(/[:@]/)[0] ?? null;
-        log.info({ gymId, number: session.number }, "WhatsApp linked");
-        void drainQueue();
-      }
-      if (connection === "close") {
-        // A newer connection may already have replaced this one.
-        if (sessions.get(gymId) !== session) return;
-        sessions.delete(gymId);
-        const code = lastDisconnect?.error?.output?.statusCode;
-        if (code === DisconnectReason.loggedOut) {
-          // Unlinked from the phone: forget the login so a fresh QR is shown.
-          await clearAuth(gymId);
-          log.info({ gymId }, "WhatsApp unlinked from the phone");
-        } else if (state.creds.registered || state.creds.me) {
-          // A linked number dropped its connection; get it back.
-          log.info({ gymId, code }, "connection closed, reconnecting");
-          setTimeout(() => startSession(gymId).catch(() => {}), 3000);
+      try {
+        if (qr) {
+          session.state = "qr";
+          session.qr = await QRCode.toDataURL(qr, { margin: 1, width: 320 });
         }
-        // Otherwise nobody scanned the QR in time. It restarts when the
-        // gym next opens its WhatsApp page.
+        if (connection === "open") {
+          session.state = "connected";
+          session.qr = null;
+          session.number = sock.user?.id?.split(/[:@]/)[0] ?? null;
+          log.info({ gymId, number: session.number }, "WhatsApp linked");
+          void drainQueue();
+        }
+        if (connection === "close") {
+          // A newer connection may already have replaced this one.
+          if (sessions.get(gymId) !== session) return;
+          sessions.delete(gymId);
+          const code = lastDisconnect?.error?.output?.statusCode;
+          if (code === DisconnectReason.loggedOut) {
+            // Unlinked from the phone: forget the login so a fresh QR is shown.
+            await clearAuth(gymId);
+            log.info({ gymId }, "WhatsApp unlinked from the phone");
+          } else if (code === DisconnectReason.connectionReplaced) {
+            // Another copy of this service (a deploy in progress) took over the
+            // number. Reconnecting would make the two keep kicking each other off.
+            log.warn({ gymId }, "connection taken over by another sender, not reconnecting");
+          } else if (state.creds.registered || state.creds.me) {
+            // A linked number dropped its connection; get it back.
+            log.info({ gymId, code }, "connection closed, reconnecting");
+            setTimeout(() => startSession(gymId).catch(() => {}), 3000);
+          }
+          // Otherwise nobody scanned the QR in time. It restarts when the
+          // gym next opens its WhatsApp page.
+        }
+      } catch (error) {
+        log.error({ gymId, err: error.message }, "connection update failed");
       }
     });
   } catch (error) {
@@ -165,6 +204,21 @@ async function startSession(gymId) {
     throw error;
   }
   return session;
+}
+
+// Losing a login save means relinking the number, so a database blip gets a
+// few more tries before giving up.
+async function saveCredsWithRetry(gymId, saveCreds) {
+  for (let attempt = 1; attempt <= 4; attempt++) {
+    try {
+      await saveCreds();
+      return;
+    } catch (error) {
+      log.warn({ gymId, attempt, err: error.message }, "could not save WhatsApp login");
+      if (attempt < 4) await sleep(2000 * attempt);
+    }
+  }
+  log.error({ gymId }, "gave up saving WhatsApp login");
 }
 
 // After a restart, reconnect every gym that had already linked a number.
@@ -200,7 +254,7 @@ function toJid(phone) {
 }
 
 const markFailed = (id, error) =>
-  db.query(`UPDATE "WhatsappMessage" SET status = 'failed', error = $2 WHERE id = $1`, [
+  db.query(`UPDATE "WhatsappMessage" SET status = 'failed', error = $2, "sentAt" = NULL WHERE id = $1`, [
     id,
     String(error).slice(0, 300),
   ]);
@@ -209,10 +263,21 @@ const markFailed = (id, error) =>
 // twice (a sleeping app can be slow to wake); without it the message fails,
 // so a member never gets the text without their invoice.
 async function fetchDocument(url) {
+  let origin = "";
+  try {
+    origin = new URL(url).origin;
+  } catch {
+    // Not a web address; the fetch below fails and so does the message.
+  }
+  // Our key never goes to any other address; without it the app refuses
+  // and the message fails, which is the safe outcome.
+  const ours = APP_ORIGIN !== "" && origin === APP_ORIGIN;
+  if (!ours) log.warn({ url, appUrl: APP_URL || null }, "invoice address is not the app's; fetching without the key");
+  const headers = ours ? { "x-api-key": API_KEY } : {};
   let problem;
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
-      const res = await fetch(url, { headers: { "x-api-key": API_KEY }, signal: AbortSignal.timeout(30000) });
+      const res = await fetch(url, { headers, signal: AbortSignal.timeout(30000) });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const name = /filename="([^"]+)"/.exec(res.headers.get("content-disposition") ?? "")?.[1];
       return { buffer: Buffer.from(await res.arrayBuffer()), fileName: name ?? "Invoice.pdf" };
@@ -289,7 +354,11 @@ async function sendOne(session, message) {
 }
 
 let draining = false;
+// Gyms whose queue is being worked through right now.
+const drainingGyms = new Set();
 
+// Clears out what cannot be sent any more, then lets every connected gym
+// work through its own queue, so one gym's slow invoice does not hold up the rest.
 async function drainQueue() {
   if (draining) return;
   draining = true;
@@ -299,41 +368,83 @@ async function drainQueue() {
               error = 'Not sent within ${STALE_AFTER_HOURS} hours (WhatsApp was not connected)'
        WHERE status = 'pending' AND "createdAt" < now() - interval '${STALE_AFTER_HOURS} hours'`
     );
-
-    while (true) {
-      const connected = [...sessions.entries()].filter(([, s]) => s.state === "connected");
-      if (connected.length === 0) return;
-
-      // The oldest waiting message of each connected gym.
-      const { rows } = await db.query(
-        `SELECT DISTINCT ON (gym_id) id, gym_id, phone, body, document, "groupId" FROM "WhatsappMessage"
-         WHERE status = 'pending' AND gym_id = ANY($1)
-         ORDER BY gym_id, "createdAt" ASC`,
-        [connected.map(([gymId]) => gymId)]
-      );
-      if (rows.length === 0) return;
-
-      for (const message of rows) {
-        const session = sessions.get(message.gym_id);
-        if (session?.state !== "connected") continue;
-        // Each gym's number keeps its own gap between messages.
-        const wait = session.lastSentAt + MIN_GAP_MS + Math.random() * (MAX_GAP_MS - MIN_GAP_MS) - Date.now();
-        if (wait > 0) await sleep(wait);
-        try {
-          await sendOne(session, message);
-        } catch (error) {
-          // A dropped connection leaves the message waiting; anything else
-          // is a problem with this message, so it is marked and skipped.
-          if (sessions.get(message.gym_id)?.state !== "connected") continue;
-          await markFailed(message.id, error.message);
-        }
-        session.lastSentAt = Date.now();
-      }
-    }
+    // The sender stopped part way through these, so they may have gone out.
+    await db.query(
+      `UPDATE "WhatsappMessage" SET status = 'failed', "sentAt" = NULL,
+              error = 'Not sure it was delivered (the sender restarted); check before retrying'
+       WHERE status = 'sending'
+         AND COALESCE("sentAt", "createdAt") < now() - interval '${STUCK_AFTER_MINUTES} minutes'`
+    );
   } catch (error) {
-    log.error({ err: error.message }, "queue run failed");
+    log.error({ err: error.message }, "queue clean-up failed");
   } finally {
     draining = false;
+  }
+  for (const [gymId, session] of sessions) {
+    if (session.state === "connected") void drainGym(gymId);
+  }
+}
+
+// Takes this gym's oldest message that may go out now and marks it
+// 'sending' in one step, so no other copy of the service can take it too.
+// Outside the day only immediate messages (one-off sends from the desk,
+// group adds, replies to an enquiry, sale or payment) are taken; reminders
+// and offers wait for the morning without holding those up.
+async function claimNext(gymId) {
+  const { rows } = await db.query(
+    `UPDATE "WhatsappMessage" SET status = 'sending', "sentAt" = now()
+     WHERE status = 'pending' AND id = (
+       SELECT m.id FROM "WhatsappMessage" m
+       JOIN "Gym" g ON g.id = m.gym_id AND g.active
+       LEFT JOIN "WhatsappWorkflow" w ON w.id = m.workflow_id
+       WHERE m.status = 'pending' AND m.gym_id = $1
+         AND (NOT $2::boolean
+              OR m."groupId" IS NOT NULL
+              OR (m.workflow_id IS NULL AND m.campaign_id IS NULL)
+              OR w.trigger::text = ANY($3))
+       ORDER BY m."createdAt" ASC
+       LIMIT 1
+       FOR UPDATE OF m SKIP LOCKED)
+     RETURNING id, gym_id, phone, body, document, "groupId"`,
+    [gymId, isQuietHours(), IMMEDIATE_TRIGGERS]
+  );
+  return rows[0];
+}
+
+async function drainGym(gymId) {
+  if (drainingGyms.has(gymId)) return;
+  drainingGyms.add(gymId);
+  try {
+    while (true) {
+      const session = sessions.get(gymId);
+      if (session?.state !== "connected") return;
+      // Each gym's number keeps its own gap between messages.
+      const wait = session.lastSentAt + MIN_GAP_MS + Math.random() * (MAX_GAP_MS - MIN_GAP_MS) - Date.now();
+      if (wait > 0) await sleep(wait);
+      if (sessions.get(gymId) !== session || session.state !== "connected") return;
+
+      const message = await claimNext(gymId);
+      if (!message) return;
+      try {
+        await sendOne(session, message);
+      } catch (error) {
+        if (sessions.get(gymId)?.state !== "connected") {
+          // A dropped connection puts the message back to wait for it.
+          await db.query(
+            `UPDATE "WhatsappMessage" SET status = 'pending', "sentAt" = NULL WHERE id = $1 AND status = 'sending'`,
+            [message.id]
+          );
+          return;
+        }
+        // Anything else is a problem with this message, so it is marked and skipped.
+        await markFailed(message.id, error.message);
+      }
+      session.lastSentAt = Date.now();
+    }
+  } catch (error) {
+    log.error({ gymId, err: error.message }, "queue run failed");
+  } finally {
+    drainingGyms.delete(gymId);
   }
 }
 

@@ -1,63 +1,13 @@
 "use server";
 
-import prisma from "@/lib/prisma";
+// The old member portal is switched off (see src/app/user/layout.tsx): it
+// signed members in with a shared default password, across all gyms. These
+// stay only so old browser tabs get a clean "no".
 
-export async function LoginMember({
-  phone,
-  password,
-}: {
-  phone: string;
-  password: string;
-}) {
-  try {
-    const member = await prisma.member.findFirst({
-      where: {
-        phone: BigInt(phone),
-        password: password,
-      },
-    });
-
-    if (member) {
-      return { success: true, id: member.id };
-    }
-    return { success: false };
-  } catch {
-    return { success: false };
-  }
+export async function LoginMember(_: { phone: string; password: string }) {
+  return { success: false as const };
 }
 
-
-export async function ChangePassword({
-  oldPassword,
-  newPassword,
-  member_id
-}: {
-  oldPassword: string;
-  newPassword: string;
-  member_id: string;
-}) {
-  try {
-    const member = await prisma.member.findFirst({
-      where: {
-        id: member_id,
-        password: oldPassword,
-      },
-    });
-
-    if (member) {
-      await prisma.member.update({
-        where: {
-          id: member_id,
-        },
-        data: {
-          password: newPassword,
-        },
-      });
-      return { success: true };
-    }
-    return { success: false };
-  } catch {
-    return { success: false };
-  }
-  
+export async function ChangePassword(_: { oldPassword: string; newPassword: string; member_id: string }) {
+  return { success: false as const };
 }

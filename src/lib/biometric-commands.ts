@@ -5,16 +5,28 @@
 import base from "@/lib/prisma";
 import prisma, { requireGymId } from "@/lib/tenant";
 import { membershipStatus } from "@/lib/membership";
+import { UserError } from "@/lib/safe-action";
 
-// Names travel in a tab-separated line; keep them to plain printable text.
-const clean = (text: string) => text.replace(/[\t\r\n]/g, " ").slice(0, 24);
+// Machine IDs are plain numbers. Anything else could smuggle extra fields or
+// extra commands into the tab- and newline-separated text sent to a machine.
+export const isMachineId = (pin: string | null | undefined): pin is string =>
+  !!pin && /^\d{1,9}$/.test(pin);
+
+export function requireMachineId(pin: string | null | undefined): string {
+  if (!isMachineId(pin)) throw new UserError("A machine ID is a number of up to 9 digits");
+  return pin;
+}
+
+// Names travel in a tab-separated line; keep them to plain printable text
+// (no tabs, line breaks or other control characters).
+export const cleanMachineName = (text: string) => text.replace(/[\x00-\x1f\x7f]/g, " ").slice(0, 24);
 
 export const commandFor = {
   // Creates the person on the machine, or updates their name.
   addUser: (pin: string, name: string) =>
-    `DATA UPDATE USERINFO PIN=${pin}\tName=${clean(name)}\tPri=0\tPasswd=\tCard=\tGrp=1\tTZ=0000000100000000\tVerify=0`,
+    `DATA UPDATE USERINFO PIN=${requireMachineId(pin)}\tName=${cleanMachineName(name)}\tPri=0\tPasswd=\tCard=\tGrp=1\tTZ=0000000100000000\tVerify=0`,
   // Removes the person and their fingerprints from the machine.
-  removeUser: (pin: string) => `DATA DELETE USERINFO PIN=${pin}`,
+  removeUser: (pin: string) => `DATA DELETE USERINFO PIN=${requireMachineId(pin)}`,
   // Asks the machine to send its full list of enrolled people.
   listUsers: () => "DATA QUERY USERINFO",
 };
@@ -65,6 +77,8 @@ export async function autoBlockExpiredMembers(): Promise<number> {
   for (const member of members) {
     // People who never bought a plan are left alone (trial, staff family...).
     if (member.sales.length === 0 || membershipStatus(member.sales).state !== "expired") continue;
+    // An ID that could not be sent safely is skipped rather than stopping the run.
+    if (!isMachineId(member.biometricId)) continue;
     await queueForAllMachines(`Membership ended: remove ${member.name} (ID ${member.biometricId})`, commandFor.removeUser(member.biometricId!));
     await prisma.member.update({ where: { id: member.id }, data: { machineBlocked: true } });
     blocked++;
@@ -76,7 +90,7 @@ export async function autoBlockExpiredMembers(): Promise<number> {
 // they had been taken off. They need to enroll their finger again.
 export async function restoreToMachines(member_id: string): Promise<boolean> {
   const member = await prisma.member.findUnique({ where: { id: member_id } });
-  if (!member?.biometricId || !member.machineBlocked || member.blacklisted) return false;
+  if (!member || !isMachineId(member.biometricId) || !member.machineBlocked || member.blacklisted) return false;
   await queueForAllMachines(`Renewed: add ${member.name} back (ID ${member.biometricId})`, commandFor.addUser(member.biometricId, member.name));
   await prisma.member.update({ where: { id: member.id }, data: { machineBlocked: false } });
   return true;

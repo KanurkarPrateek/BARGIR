@@ -322,9 +322,9 @@ Works with eSSL, ZKTeco and BioMax "push" machines.
 
 | Tab | What it does |
 |---|---|
-| **Add Biometric** | Sends a member (or staff member) to the machine with a machine ID. Then enroll their finger **on the machine**: User Management → find the ID → enroll fingerprint. *Get people from machine* imports a machine that already has people on it. |
+| **Add Biometric** | Sends a member (or staff member) to the machine with a machine ID. Then enroll their finger **on the machine**: User Management → find the ID → enroll fingerprint. *Get people from machine* *(owner)* imports a machine that already has people on it. |
 | **Block Biometric** | Takes a member off the machine so it stops recognising them. Optional: block automatically when membership ends, and put them back when they renew. |
-| **Delete Biometric** | Removes someone from the machine and frees their machine ID. |
+| **Delete Biometric** *(owner)* | Removes someone from the machine and frees their machine ID. |
 | **Link IDs** | Machine IDs that punched but aren't linked to anyone yet. Pick the member or staff member once. |
 | **View Commands** | Every instruction sent to the machines and whether it worked. |
 | **Machine Setup** *(owner)* | The address to type into the machine, adding machines by serial number, and importing a pen-drive attendance file. |

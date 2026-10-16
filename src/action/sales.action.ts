@@ -23,7 +23,7 @@ import {
   endOfMonth,
 } from "date-fns";
 import { MemberResponse } from "./member.action";
-import { PaymentMode, saleDue, todayString } from "@/lib/membership";
+import { PaymentMode, membershipStatus, saleDue, todayString } from "@/lib/membership";
 import { notifyTrainerOfMember } from "@/lib/whatsapp/staff";
 
 // Type definitions
@@ -95,6 +95,17 @@ const validateDateFormat = (dateStr: string): boolean => {
   return isValid(parsed);
 };
 
+// Where a new plan for this member should start by default: the day after
+// their current membership ends (an early renewal), or null when they have
+// nothing running today or later.
+export async function GetRenewalStartDate(member_id: string): Promise<string | null> {
+  if (!member_id) return null;
+  const sales = await prisma.sales.findMany({ where: { member_id }, select: { endDate: true } });
+  const { endDate, daysLeft } = membershipStatus(sales);
+  if (!endDate || daysLeft === null || daysLeft < 0) return null;
+  return format(addDays(parse(endDate, "dd-MM-yyyy", new Date()), 1), "dd-MM-yyyy");
+}
+
 // 1. AddSales
 export async function AddSales(data: SalesInput): Promise<SalesResponse | Failed> {
   return safe(async () => {
@@ -109,8 +120,18 @@ export async function AddSales(data: SalesInput): Promise<SalesResponse | Failed
         throw new UserError("Missing required fields");
       }
 
-      if (data.discount < 0 || data.amount < 0 || data.paid < 0) {
+      // Money is stored in whole rupees; paise are rounded off.
+      const amounts = [data.amount, data.discount ?? 0, data.paid ?? 0];
+      if (amounts.some((value) => typeof value !== "number" || !Number.isFinite(value))) {
+        throw new UserError("Amount, discount and paid must be numbers");
+      }
+      const [amount, discount, paidRounded] = amounts.map(Math.round);
+      if (discount < 0 || amount < 0 || paidRounded < 0) {
         throw new UserError("Discount, amount, and paid cannot be negative");
+      }
+      if (amount === 0) throw new UserError("Amount must be greater than zero");
+      if (discount > amount) {
+        throw new UserError(`Discount ₹${discount} is more than the price ₹${amount}`);
       }
 
       if (!validateDateFormat(data.startDate)) {
@@ -139,8 +160,8 @@ export async function AddSales(data: SalesInput): Promise<SalesResponse | Failed
       const formattedEndDate = format(endDate, "dd-MM-yyyy");
 
       await requireOwnTrainer(data.trainer_id);
-      const paid = Math.trunc(data.paid) || 0;
-      if (paid > data.amount - data.discount) {
+      const paid = paidRounded;
+      if (paid > amount - discount) {
         throw new UserError("Amount paid is more than the amount to be paid");
       }
 
@@ -149,8 +170,8 @@ export async function AddSales(data: SalesInput): Promise<SalesResponse | Failed
           member_id: data.member_id,
           service_id: data.service_id,
           description: data.description,
-          discount: data.discount,
-          amount: data.amount,
+          discount,
+          amount,
           paid,
           startDate: data.startDate,
           endDate: formattedEndDate,

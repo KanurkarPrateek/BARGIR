@@ -31,12 +31,6 @@ export function LoginForm({
       return
     }
     const res = await LoginMember(credenials)
-    if (res.success) {
-      toast.success('Logged in successfully');
-      localStorage.setItem('member_id', res.id ? res.id : '')
-      window.location.href = '/user'
-      return
-    }
     toast.error("Incorrect phone or password")
     return
   }

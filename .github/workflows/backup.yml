@@ -1,0 +1,43 @@
+# Nightly backup of the live databases (each cluster's gym database and the
+# Control Panel's), encrypted, kept 30 days as a download on the Actions run.
+# Supabase's free plan keeps no backups of its own.
+#
+# Repository secrets (Settings -> Secrets and variables -> Actions):
+#   BACKUP_PASSPHRASE          encrypts the files; keep a copy somewhere safe,
+#                              the backups cannot be opened without it
+#   BACKUP_DB_CLUSTER_1        cluster-1's DIRECT_URL (port 5432)
+#   BACKUP_DB_CONTROL          the Control Panel's DIRECT_URL
+# Restore steps are in DEPLOY.md ("Backups").
+name: Backup
+
+on:
+  schedule:
+    - cron: "30 20 * * *" # 02:00 India time
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        db: [CLUSTER_1, CONTROL]
+    steps:
+      - name: Dump and encrypt
+        env:
+          DB_URL: ${{ secrets[format('BACKUP_DB_{0}', matrix.db)] }}
+          PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          if [ -z "$DB_URL" ] || [ -z "$PASSPHRASE" ]; then echo "::error::Backup secrets for ${{ matrix.db }} are not set"; exit 1; fi
+          name="backup-${{ matrix.db }}-$(date -u +%Y-%m-%d)"
+          # Same major version as Supabase's Postgres (17).
+          docker run --rm -e DB_URL postgres:17 sh -c 'pg_dump "$DB_URL" --schema=public --format=custom --no-owner --no-privileges' > db.dump
+          test -s db.dump
+          gpg --batch --yes --pinentry-mode loopback --passphrase "$PASSPHRASE" --symmetric --cipher-algo AES256 -o "$name.dump.gpg" db.dump
+          rm db.dump
+          echo "NAME=$name" >> "$GITHUB_ENV"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.NAME }}
+          path: ${{ env.NAME }}.dump.gpg
+          retention-days: 30

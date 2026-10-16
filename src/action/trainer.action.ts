@@ -92,13 +92,21 @@ export async function SaveTrainer(data: TrainerInput): Promise<void | Failed> {
   });
 }
 
-// Their members and enquiries stay, just without a trainer.
-export async function DeleteTrainer(id: string): Promise<void> {
-  await requireOwner();
-  await prisma.trainer.delete({ where: { id } });
+// Their members and enquiries stay, just without a trainer. A trainer who has
+// sold packages is kept, or the sales would lose who made them.
+export async function DeleteTrainer(id: string): Promise<void | Failed> {
+  return safe(async () => {
+    await requireOwner();
+    if (await prisma.sales.count({ where: { trainer_id: id } })) {
+      throw new UserError("This trainer has sales, so they cannot be deleted. Edit them and switch off 'Currently working here' instead.");
+    }
+    await prisma.trainer.delete({ where: { id } });
+  });
 }
 
+// Owner only: includes the value of their sales.
 export async function GetTrainerDetail(id: string): Promise<TrainerDetail | null> {
+  await requireOwner();
   const trainer = await prisma.trainer.findUnique({
     where: { id },
     include: {

@@ -15,89 +15,93 @@ datasource db {
 }
 
 model Member {
-  id         String          @id @default(uuid())
+  id              String       @id @default(uuid())
   // Gym this row belongs to; set and filtered automatically (src/lib/tenant.ts).
-  gym_id String @default("")
-  name       String
-  email      String?
-  memberCode String          @unique
-  phone      BigInt
-  password   String          @default("Test@12345")
+  gym_id          String       @default("")
+  name            String
+  email           String?
+  // Unique within the gym (see @@unique below), not across all gyms.
+  memberCode      String
+  phone           BigInt
+  password        String       @default("Test@12345")
   // User ID this member is enrolled under on the biometric machine.
-  biometricId String?
+  biometricId     String?
   // Blocked members are refused at the front desk and removed from machines.
-  blacklisted     Boolean @default(false)
+  blacklisted     Boolean      @default(false)
   blacklistReason String?
   // Taken off the biometric machines (blacklisted, or expired with auto-block on).
-  machineBlocked  Boolean @default(false)
+  machineBlocked  Boolean      @default(false)
   // Preferred workout time slot.
-  batch_id   String?
-  batch      Batch?          @relation(fields: [batch_id], references: [id], onDelete: SetNull)
-  address    String?
-  DOB        String
-  reviewDone Boolean         @default(false)
-  gender     Gender
-  DOJ        String
-  createdAt  DateTime        @default(now())
-  updatedAt  DateTime        @updatedAt
-  sales      Sales[]
-  attendance Attendance[]
-  payments   Payment[]
+  batch_id        String?
+  batch           Batch?       @relation(fields: [batch_id], references: [id], onDelete: SetNull)
+  address         String?
+  DOB             String
+  reviewDone      Boolean      @default(false)
+  gender          Gender
+  DOJ             String
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  sales           Sales[]
+  attendance      Attendance[]
+  payments        Payment[]
   // Personal trainer looking after this member, if any.
-  trainer_id String?
-  trainer    Trainer?        @relation(fields: [trainer_id], references: [id], onDelete: SetNull)
+  trainer_id      String?
+  trainer         Trainer?     @relation(fields: [trainer_id], references: [id], onDelete: SetNull)
 
-  @@index([gym_id])
   // Machine IDs are only unique within one gym.
   @@unique([gym_id, biometricId])
+  @@unique([gym_id, memberCode])
+  @@index([gym_id])
 }
 
 model Services {
-  id          String   @id @default(uuid())
+  id                 String   @id @default(uuid())
   // Gym this row belongs to; set and filtered automatically (src/lib/tenant.ts).
-  gym_id String @default("")
-  name        String
-  description String?
-  price       Int
-  duration    Int
+  gym_id             String   @default("")
+  name               String
+  description        String?
+  price              Int
+  duration           Int
   // Personal training package: buyers show up as PT clients needing a trainer.
-  isPersonalTraining Boolean @default(false)
+  isPersonalTraining Boolean  @default(false)
   // Running offer on this package: "percent" or "flat" (rupees off), applied
   // automatically when it is sold, until offerTill (dd-MM-yyyy) if set.
   discountType       String?
-  discountValue      Int     @default(0)
+  discountValue      Int      @default(0)
   offerTill          String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  sales       Sales[]
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  sales              Sales[]
 
   @@index([gym_id])
 }
 
 model Sales {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   // Gym this row belongs to; set and filtered automatically (src/lib/tenant.ts).
-  gym_id String @default("")
+  gym_id      String    @default("")
   member_id   String
   service_id  String
-  service     Services @relation(fields: [service_id], references: [id])
+  service     Services  @relation(fields: [service_id], references: [id])
   description String?
   discount    Int
   amount      Int
   paid        Int
   startDate   String
   endDate     String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  member      Member   @relation(fields: [member_id], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  member      Member    @relation(fields: [member_id], references: [id])
   // `paid` is the running total of `payments`, kept in step by the
   // payment actions so existing reports can keep reading it.
   payments    Payment[]
   // Trainer delivering this package (personal training sales).
   trainer_id  String?
-  trainer     Trainer? @relation(fields: [trainer_id], references: [id], onDelete: SetNull)
+  trainer     Trainer?  @relation(fields: [trainer_id], references: [id], onDelete: SetNull)
 
   @@index([gym_id])
+  @@index([member_id])
+  @@index([gym_id, endDate])
 }
 
 enum PaymentMode {
@@ -112,7 +116,7 @@ enum PaymentMode {
 model Payment {
   id        String      @id @default(uuid())
   // Gym this row belongs to; set and filtered automatically (src/lib/tenant.ts).
-  gym_id String @default("")
+  gym_id    String      @default("")
   sale_id   String
   sale      Sales       @relation(fields: [sale_id], references: [id], onDelete: Cascade)
   member_id String
@@ -124,14 +128,15 @@ model Payment {
   createdAt DateTime    @default(now())
 
   @@index([date])
-
+  @@index([sale_id])
+  @@index([gym_id, date])
   @@index([gym_id])
 }
 
 model Trainer {
   id             String    @id @default(uuid())
   // Gym this row belongs to; set and filtered automatically (src/lib/tenant.ts).
-  gym_id String @default("")
+  gym_id         String    @default("")
   name           String
   phone          BigInt
   specialization String?
@@ -148,7 +153,7 @@ model Trainer {
 model Attendance {
   id        String   @id @default(uuid())
   // Gym this row belongs to; set and filtered automatically (src/lib/tenant.ts).
-  gym_id String @default("")
+  gym_id    String   @default("")
   member_id String
   member    Member   @relation(fields: [member_id], references: [id])
   date      String
@@ -156,13 +161,18 @@ model Attendance {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // One check-in per member per day, even when a machine and the front desk
+  // record it at the same moment.
+  @@unique([gym_id, member_id, date])
   @@index([gym_id])
+  @@index([gym_id, date])
+  @@index([member_id])
 }
 
 model Enquiry {
-  id           String      @id @default(uuid())
+  id           String        @id @default(uuid())
   // Gym this row belongs to; set and filtered automatically (src/lib/tenant.ts).
-  gym_id String @default("")
+  gym_id       String        @default("")
   name         String
   phone        BigInt
   followupDate String?
@@ -171,9 +181,9 @@ model Enquiry {
   status       EnquiryStatus @default(open)
   // Staff member responsible for following up.
   trainer_id   String?
-  trainer      Trainer?    @relation(fields: [trainer_id], references: [id], onDelete: SetNull)
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  trainer      Trainer?      @relation(fields: [trainer_id], references: [id], onDelete: SetNull)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 
   @@index([gym_id])
 }
@@ -198,7 +208,6 @@ enum Gender {
   other
 }
 
-
 // ---------- WhatsApp automation ----------
 
 enum WorkflowTrigger {
@@ -215,7 +224,7 @@ enum WorkflowTrigger {
 model WhatsappWorkflow {
   id         String            @id @default(uuid())
   // Gym this row belongs to; set and filtered automatically (src/lib/tenant.ts).
-  gym_id String @default("")
+  gym_id     String            @default("")
   name       String
   trigger    WorkflowTrigger
   offsetDays Int               @default(0)
@@ -242,20 +251,23 @@ enum CampaignAudience {
 model WhatsappCampaign {
   // Package the offer is about, for the {package} / {offer_price} tags.
   service_id String?
-  id        String            @id @default(uuid())
+  id         String            @id @default(uuid())
   // Gym this row belongs to; set and filtered automatically (src/lib/tenant.ts).
-  gym_id String @default("")
-  title     String
-  template  String
-  audience  CampaignAudience
-  createdAt DateTime          @default(now())
-  messages  WhatsappMessage[]
+  gym_id     String            @default("")
+  title      String
+  template   String
+  audience   CampaignAudience
+  createdAt  DateTime          @default(now())
+  messages   WhatsappMessage[]
 
   @@index([gym_id])
 }
 
 enum MessageStatus {
   pending
+  // Taken by the sender, which is sending it right now; it is never picked
+  // up twice.
+  sending
   sent
   failed
 }
@@ -265,7 +277,7 @@ enum MessageStatus {
 model WhatsappMessage {
   id          String            @id @default(uuid())
   // Gym this row belongs to; set and filtered automatically (src/lib/tenant.ts).
-  gym_id String @default("")
+  gym_id      String            @default("")
   name        String
   phone       BigInt
   body        String
@@ -287,6 +299,7 @@ model WhatsappMessage {
   sentAt      DateTime?
 
   @@index([gym_id])
+  @@index([status, gym_id, createdAt])
 }
 
 // ---------- Biometric attendance ----------
@@ -295,14 +308,14 @@ model WhatsappMessage {
 // A gym registers its machine by serial number; every machine talks to the
 // same address and the serial decides which gym its punches belong to.
 model BiometricDevice {
-  serial      String   @id
+  serial      String    @id
   // Empty while no gym has claimed it: a machine that contacts the server
   // first is listed under Machine Setup so its gym can claim it in one tap.
-  gym_id      String   @default("")
+  gym_id      String    @default("")
   // Position in the machine's log up to which punches have been received.
-  attlogStamp String   @default("0")
+  attlogStamp String    @default("0")
   lastSeenAt  DateTime?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
 
   @@index([gym_id])
 }
@@ -313,7 +326,7 @@ model BiometricDevice {
 model BiometricPunch {
   id           String   @id @default(uuid())
   // Gym this row belongs to; set and filtered automatically (src/lib/tenant.ts).
-  gym_id String @default("")
+  gym_id       String   @default("")
   deviceSerial String
   pin          String
   date         String // dd-MM-yyyy
@@ -324,9 +337,9 @@ model BiometricPunch {
   staff_id     String?
   createdAt    DateTime @default(now())
 
-  @@unique([deviceSerial, pin, date, time])
+  // Per gym: USB imports of every gym share the serial "file-import".
+  @@unique([gym_id, deviceSerial, pin, date, time])
   @@index([pin, member_id])
-
   @@index([gym_id])
 }
 
@@ -344,34 +357,34 @@ model BiometricUser {
 // ---------- Gyms and staff logins ----------
 
 model Gym {
-  id        String   @id @default(uuid())
-  name      String
+  id                String   @id @default(uuid())
+  name              String
   // Contact number for the gym; also printed on invoices.
-  phone     BigInt?
-  address   String?
-  email     String?
-  gstin     String?
+  phone             BigInt?
+  address           String?
+  email             String?
+  gstin             String?
   // Printed at the bottom of invoices.
-  invoiceTerms String?
+  invoiceTerms      String?
   // Remove members from the biometric machines when their membership ends,
   // and add them back when they renew.
-  autoBlockExpired Boolean @default(false)
+  autoBlockExpired  Boolean  @default(false)
   // The gym's WhatsApp group (its linked number must be an admin there) and
   // whether new members are added to it automatically.
   whatsappGroupId   String?
   whatsappGroupName String?
-  autoAddToGroup    Boolean @default(false)
+  autoAddToGroup    Boolean  @default(false)
   // False until the owner finishes (or skips) the setup wizard.
-  setupDone        Boolean @default(false)
+  setupDone         Boolean  @default(false)
   // Small image stored as a data URL (shrunk in the browser before upload),
   // so no file storage is needed.
-  logo      String?
+  logo              String?
   // Main colour for invoices ("#rrggbb"); picked from the logo, editable.
-  brandColor String?
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  users     User[]
+  brandColor        String?
+  active            Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  users             User[]
 }
 
 enum UserRole {
@@ -499,4 +512,13 @@ model BiometricCommand {
 
   @@index([deviceSerial, status])
   @@index([gym_id])
+}
+
+// Failed sign-ins per phone number (or login), to slow down password guessing:
+// after too many in a short time, that login is locked for a while.
+model LoginAttempt {
+  key         String    @id
+  failures    Int       @default(0)
+  windowStart DateTime  @default(now())
+  lockedUntil DateTime?
 }

@@ -3,7 +3,7 @@
 // Staff Management: people who work at the gym, their shifts, their
 // attendance, and front-desk logins.
 import base from "@/lib/prisma";
-import prisma, { requireGymId, requireOwner } from "@/lib/tenant";
+import prisma, { isOwner, requireGymId, requireOwner } from "@/lib/tenant";
 import { Failed } from "@/lib/action-result";
 import { UserError, safe } from "@/lib/safe-action";
 import { requireIndianMobile } from "@/lib/phone";
@@ -35,6 +35,8 @@ export interface StaffRow extends StaffInput {
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 export async function GetStaffList(): Promise<StaffRow[]> {
+  // Front desk uses this list too (attendance, machines) but sees no salaries.
+  const owner = await isOwner();
   const today = todayString();
   const staff = await prisma.staff.findMany({
     orderBy: [{ active: "desc" }, { name: "asc" }],
@@ -52,7 +54,7 @@ export async function GetStaffList(): Promise<StaffRow[]> {
     role: s.role,
     shiftStart: s.shiftStart,
     shiftEnd: s.shiftEnd,
-    salary: s.salary,
+    salary: owner ? s.salary : null,
     joinDate: s.joinDate,
     active: s.active,
     biometricId: s.biometricId,
@@ -177,12 +179,23 @@ export async function GetStaffAttendance(from: string, to: string): Promise<Staf
 // Front desk marks a staff member in, or out if they are already in.
 export async function MarkStaffAttendance(staff_id: string): Promise<"in" | "out" | Failed> {
   return safe(async () => {
+    // Only this gym's own staff.
+    if (!(await prisma.staff.findUnique({ where: { id: staff_id }, select: { id: true } }))) {
+      throw new UserError("Staff member not found");
+    }
     const date = todayString();
     const now = format(new Date(), "HH:mm:ss");
     const existing = await prisma.staffAttendance.findFirst({ where: { staff_id, date } });
     if (!existing) {
-      await prisma.staffAttendance.create({ data: { staff_id, date, inTime: now } });
-      return "in" as const;
+      try {
+        await prisma.staffAttendance.create({ data: { staff_id, date, inTime: now } });
+        return "in" as const;
+      } catch (error: any) {
+        // Marked in at the same moment elsewhere (the machine): this is the out.
+        if (error?.code !== "P2002") throw error;
+        await prisma.staffAttendance.updateMany({ where: { staff_id, date }, data: { outTime: now } });
+        return "out" as const;
+      }
     }
     await prisma.staffAttendance.update({ where: { id: existing.id }, data: { outTime: now } });
     return "out" as const;

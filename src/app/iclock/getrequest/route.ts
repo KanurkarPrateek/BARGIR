@@ -13,12 +13,15 @@ const text = (body: string) =>
 export async function GET(request: NextRequest) {
   const serial = request.nextUrl.searchParams.get("SN");
   if (!serial) return text("OK");
+  // Machines no gym has claimed get nothing.
   const device = await prisma.biometricDevice.findUnique({ where: { serial } });
   if (!device?.gym_id) return text("OK");
   await prisma.biometricDevice.update({ where: { serial }, data: { lastSeenAt: new Date() } });
 
+  // Only commands queued by the gym that owns the machine now; anything left
+  // over from before it was removed or moved to another gym is never sent.
   const commands = await prisma.biometricCommand.findMany({
-    where: { deviceSerial: serial, status: "pending" },
+    where: { deviceSerial: serial, gym_id: device.gym_id, status: "pending" },
     orderBy: { seq: "asc" },
     take: MAX_PER_CHECKIN,
   });

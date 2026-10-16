@@ -5,7 +5,7 @@ import { requireOwner } from "@/lib/tenant";
 import { Failed } from "@/lib/action-result";
 import { UserError, safe } from "@/lib/safe-action";
 // Sign-in for the people who run a gym, and for the platform admin who
-// creates gyms. (Members signing in to their own portal is auth.action.ts.)
+// creates gyms.
 import base from "@/lib/prisma";
 import { PHONE_ERROR, normalizeIndianMobile } from "@/lib/phone";
 import {
@@ -13,10 +13,16 @@ import {
   clearSession,
   getSession,
   hashPassword,
+  passwordVersion,
   setSession,
   verifyPassword,
 } from "@/lib/session";
+import { gymBrand } from "@/lib/gym-brand";
+import { checkLoginAllowed, clearLoginFailures, recordLoginFailure } from "@/lib/login-limit";
 import { timingSafeEqual } from "crypto";
+
+// Checked against when the phone number has no login, to take the same time.
+const DUMMY_HASH = hashPassword("not-a-real-password");
 
 export interface SessionInfo {
   name: string;
@@ -40,24 +46,36 @@ export async function SignIn(login: string, password: string): Promise<string | 
     const failed = new UserError("Wrong phone number or password");
     login = login.trim();
 
+    const phone = normalizeIndianMobile(login);
+    const limitKey = phone ?? login;
+    await checkLoginAllowed(limitKey);
+    const wrong = async () => {
+      await recordLoginFailure(limitKey);
+      return failed;
+    };
+
     const adminLogin = process.env.SUPERADMIN_LOGIN;
     const adminPassword = process.env.SUPERADMIN_PASSWORD;
     if (adminLogin && adminPassword && sameText(login, adminLogin)) {
-      if (!sameText(password, adminPassword)) throw failed;
+      if (!sameText(password, adminPassword)) throw await wrong();
+      await clearLoginFailures(limitKey);
       await setSession({ userId: "superadmin", name: "Platform admin", role: "superadmin", gymId: null });
       return "/admin/gyms";
     }
 
-    const phone = normalizeIndianMobile(login);
-    if (!phone) throw failed;
+    if (!phone) throw await wrong();
     const user = await base.user.findUnique({
       where: { phone: BigInt(phone) },
       include: { gym: true },
     });
-    if (!user || !verifyPassword(password, user.passwordHash)) throw failed;
+    // Unknown numbers take as long as known ones, so timing does not tell
+    // which numbers have a login.
+    const valid = verifyPassword(password, user?.passwordHash ?? DUMMY_HASH);
+    if (!user || !valid) throw await wrong();
     if (!user.gym.active) throw new UserError("This gym's account is switched off. Contact support.");
 
-    await setSession({ userId: user.id, name: user.name, role: user.role, gymId: user.gym_id });
+    await clearLoginFailures(limitKey);
+    await setSession({ userId: user.id, name: user.name, role: user.role, gymId: user.gym_id, pv: passwordVersion(user.passwordHash) });
     return "/dashboard";
   });
 }
@@ -70,14 +88,14 @@ export async function GetSessionInfo(): Promise<SessionInfo | null> {
   const session = await getSession();
   if (!session) return null;
   const gym = session.gymId
-    ? await base.gym.findUnique({ where: { id: session.gymId }, select: { name: true, logo: true, brandColor: true } })
+    ? await gymBrand(session.gymId)
     : null;
   return {
     name: session.name,
     role: session.role,
     gymId: session.gymId,
     gymName: gym?.name ?? null,
-    gymLogo: gym?.logo ?? null,
+    gymLogo: gym?.logoUrl ?? null,
     gymBrandColor: gym?.brandColor ?? null,
   };
 }
@@ -93,10 +111,10 @@ export async function ChangeMyPassword(current: string, next: string): Promise<v
     if (!user || !verifyPassword(current, user.passwordHash)) {
       throw new UserError("Current password is wrong");
     }
-    await base.user.update({
-      where: { id: user.id },
-      data: { passwordHash: hashPassword(next) },
-    });
+    const passwordHash = hashPassword(next);
+    await base.user.update({ where: { id: user.id }, data: { passwordHash } });
+    // Other devices are signed out; this one stays signed in.
+    await setSession({ userId: user.id, name: user.name, role: user.role, gymId: user.gym_id, pv: passwordVersion(passwordHash) });
   });
 }
 

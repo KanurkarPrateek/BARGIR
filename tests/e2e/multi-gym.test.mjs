@@ -64,7 +64,7 @@ await step("Alpha: Gym Settings save address, GST and logo", async () => {
   await page.locator("input[type=file]").setInputFiles({ name: "logo.png", mimeType: "image/png", buffer: png });
   await page.getByAltText("Gym logo").waitFor();
   await page.getByRole("button", { name: "Save", exact: true }).click();
-  await page.locator('a img[src^="data:image"]').first().waitFor({ timeout: 20000 });
+  await page.locator('a img[src^="/api/gym-logo"]').first().waitFor({ timeout: 20000 });
 });
 await step("Alpha: WhatsApp page shows the QR to link a number", async () => {
   await page.goto(`${BASE}/whatsapp`);

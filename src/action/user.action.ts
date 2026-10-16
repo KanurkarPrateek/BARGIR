@@ -2,7 +2,10 @@
 import prisma from "@/lib/prisma";
 import { isWithinInterval, parse } from "date-fns";
 
+// The old member portal is switched off (src/app/user/layout.tsx); this
+// returned any member's details to anyone, so it now returns nothing.
 export async function getAllDetailsOfMember(member_id: string) {
+  if (member_id !== "") return undefined;
   try {
     const today = new Date();
     const user = await prisma.member.findUnique({

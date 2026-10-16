@@ -19,8 +19,13 @@ them without messaging real members by mistake.
 - Every 5 minutes the sender calls `/api/cron/tick`, which queues reminders that
   have become due (expiry, follow-ups, birthdays). Vercel also calls it once a day
   at 10 AM as a safety net.
-- Dated reminders go out only between **9 AM and 9 PM India time**. If the
-  server was off, it catches up on the last 2 days.
+- Reminders and offers go out only between **9 AM and 9 PM India time**; any
+  still waiting at 9 PM are held until 9 AM. Welcome, invoice, receipt and
+  messages staff send by hand go at any hour. If the server was off, reminders
+  catch up on the last 2 days.
+- A message is never sent twice. If the sender restarts in the middle of one, it
+  is marked *Failed: Not sure it was delivered*; check with the person before
+  pressing **Retry failed**.
 - A message that could not go out within **24 hours** (number not linked) is
   marked *Failed* instead of arriving late.
 - Each reminder is sent **once per person per event**, even if the timer runs

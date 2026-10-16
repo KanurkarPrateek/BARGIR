@@ -2,12 +2,12 @@
 
 import { Failed } from '@/lib/action-result';
 import { UserError, safe } from '@/lib/safe-action';
-import prisma, { requireOwnTrainer } from '@/lib/tenant';
+import prisma, { requireOwnTrainer, requireOwner } from '@/lib/tenant';
 // import { EnquiryType }from '@prisma/client';
 import { format, parse, isValid } from 'date-fns';
 import { runEnquiryCreatedWorkflows } from '@/lib/whatsapp/workflows';
 import { notifyTrainerOfEnquiry } from '@/lib/whatsapp/staff';
-import { EnquiryStatus } from '@/lib/membership';
+import { ENQUIRY_STATUSES, EnquiryStatus } from '@/lib/membership';
 import { requireIndianMobile } from '@/lib/phone';
 
 type EnquiryType = 'call' | 'walkin' | 'instagram' | 'whatsapp';
@@ -166,15 +166,14 @@ export async function GetEnquiryByFollowupDate(date: string): Promise<EnquiryRes
   }
 }
 
-// 5. DeleteEnquiry
-export async function DeleteEnquiry(id: string): Promise<void> {
-  try {
+// 5. DeleteEnquiry (owner only; the front desk marks enquiries as lost).
+export async function DeleteEnquiry(id: string): Promise<void | Failed> {
+  return safe(async () => {
+    await requireOwner();
     await prisma.enquiry.delete({
       where: { id },
     });
-  } catch (error:any) {
-    throw error;
-  }
+  });
 }
 
 // 6. UpdateEnquiry: move it along the pipeline, hand it to a trainer, or
@@ -185,12 +184,26 @@ export async function UpdateEnquiry(
 ): Promise<void | Failed> {
   return safe(async () => {
     try {
-      if (data.followupDate && !validateDateFormat(data.followupDate)) {
-        throw new UserError('Invalid followup date format. Use dd-MM-yyyy');
+      // Only these three fields are taken from the browser; anything else in
+      // `data` (gym, nested trainer writes, dates) is ignored.
+      const values: { status?: EnquiryStatus; trainer_id?: string | null; followupDate?: string } = {};
+      if (data.status !== undefined) {
+        if (!ENQUIRY_STATUSES.some((s) => s.value === data.status)) throw new UserError('Unknown enquiry status');
+        values.status = data.status;
       }
-      await requireOwnTrainer(data.trainer_id);
-      const enquiry = await prisma.enquiry.update({ where: { id }, data });
-      if (data.trainer_id) {
+      if (data.trainer_id !== undefined) {
+        if (data.trainer_id !== null && typeof data.trainer_id !== 'string') throw new UserError('Trainer not found');
+        await requireOwnTrainer(data.trainer_id);
+        values.trainer_id = data.trainer_id || null;
+      }
+      if (data.followupDate !== undefined) {
+        if (typeof data.followupDate !== 'string' || !validateDateFormat(data.followupDate)) {
+          throw new UserError('Invalid followup date format. Use dd-MM-yyyy');
+        }
+        values.followupDate = data.followupDate;
+      }
+      const enquiry = await prisma.enquiry.update({ where: { id }, data: values });
+      if (values.trainer_id) {
         await notifyTrainerOfEnquiry(enquiry).catch((error) =>
           console.error('Failed to notify trainer of enquiry:', error)
         );

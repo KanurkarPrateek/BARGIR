@@ -1,4 +1,6 @@
 import prisma from "@/lib/tenant";
+import { Prisma } from "@prisma/client";
+import { cleanMachineName, isMachineId } from "@/lib/biometric-commands";
 
 // Sentinel "device" for punches imported from a USB export file.
 export const FILE_IMPORT_SERIAL = "file-import";
@@ -10,8 +12,9 @@ interface Punch {
 }
 
 // Attendance log lines look the same over the network and in the machine's
-// USB export (attlog.dat): "<user id> <yyyy-MM-dd> <HH:mm:ss> ...".
-const PUNCH_LINE = /^\s*(\S+)\s+(\d{4})-(\d{2})-(\d{2})\s+(\d{2}:\d{2}:\d{2})/;
+// USB export (attlog.dat): "<user id> <yyyy-MM-dd> <HH:mm:ss> ...". Only
+// numeric machine IDs are accepted, the same as the app hands out.
+const PUNCH_LINE = /^\s*(\d{1,9})\s+(\d{4})-(\d{2})-(\d{2})\s+(\d{2}:\d{2}:\d{2})/;
 
 export function parsePunches(text: string): Punch[] {
   const punches: Punch[] = [];
@@ -29,8 +32,8 @@ export async function saveDeviceUsers(text: string): Promise<void> {
   for (const line of text.split(/\r?\n/)) {
     if (!line.startsWith("USER ")) continue;
     const pin = /PIN=([^\t]+)/.exec(line)?.[1]?.trim();
-    const name = /Name=([^\t]*)/.exec(line)?.[1]?.trim();
-    if (!pin || !name) continue;
+    const name = cleanMachineName(/Name=([^\t]*)/.exec(line)?.[1] ?? "").trim();
+    if (!isMachineId(pin) || !name) continue;
     const existing = await prisma.biometricUser.findFirst({ where: { pin } });
     if (existing) {
       await prisma.biometricUser.update({ where: { id: existing.id }, data: { name } });
@@ -68,7 +71,6 @@ export async function applyPunches(pins: string[]): Promise<number> {
 }
 
 async function applyMemberPunches(pin: string, member_id: string): Promise<number> {
-  let created = 0;
   const punches = await prisma.biometricPunch.findMany({
     where: { pin, member_id: null, staff_id: null },
     orderBy: { time: "asc" },
@@ -77,17 +79,17 @@ async function applyMemberPunches(pin: string, member_id: string): Promise<numbe
   for (const punch of punches) {
     if (!firstOfDay.has(punch.date)) firstOfDay.set(punch.date, punch.time);
   }
-  for (const [date, time] of firstOfDay) {
-    const existing = await prisma.attendance.findFirst({ where: { member_id, date } });
-    if (existing) continue;
-    await prisma.attendance.create({ data: { member_id, date, time } });
-    created++;
-  }
+  // Days already checked in (at the desk, or by another upload arriving at
+  // the same moment) are skipped by the one-per-day unique key.
+  const { count } = await prisma.attendance.createMany({
+    data: [...firstOfDay].map(([date, time]) => ({ member_id, date, time })),
+    skipDuplicates: true,
+  });
   await prisma.biometricPunch.updateMany({
     where: { pin, member_id: null, staff_id: null },
     data: { member_id },
   });
-  return created;
+  return count;
 }
 
 // A second punch this soon after the first is a double tap, not leaving.
@@ -117,8 +119,14 @@ async function applyStaffPunches(pin: string, staff_id: string): Promise<number>
     if (existing) {
       await prisma.staffAttendance.update({ where: { id: existing.id }, data: { inTime, outTime } });
     } else {
-      await prisma.staffAttendance.create({ data: { staff_id, date, inTime, outTime } });
-      created++;
+      try {
+        await prisma.staffAttendance.create({ data: { staff_id, date, inTime, outTime } });
+        created++;
+      } catch (error) {
+        // Marked in at the same moment by the desk or another upload.
+        if (!(error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002")) throw error;
+        await prisma.staffAttendance.updateMany({ where: { staff_id, date }, data: { inTime, outTime } });
+      }
     }
   }
   await prisma.biometricPunch.updateMany({

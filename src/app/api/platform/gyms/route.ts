@@ -3,7 +3,8 @@ import base from "@/lib/prisma";
 import { normalizeIndianMobile } from "@/lib/phone";
 import { hashPassword } from "@/lib/session";
 import { platformAuthorized, unauthorized } from "@/lib/platform";
-import { createDefaultWorkflows } from "@/lib/whatsapp/defaults";
+import { DEFAULTS } from "@/lib/whatsapp/defaults";
+import { Prisma } from "@prisma/client";
 import { membershipStatus, parseDate } from "@/lib/membership";
 
 export const dynamic = "force-dynamic";
@@ -53,13 +54,27 @@ export async function POST(request: Request) {
   if (await base.user.findUnique({ where: { phone: BigInt(phone) } })) {
     return Response.json({ error: "That phone number already has a login on this cluster" }, { status: 409 });
   }
-  const gym = await base.gym.create({
-    data: {
-      name,
-      phone: BigInt(phone),
-      users: { create: { name: ownerName, phone: BigInt(phone), passwordHash: hashPassword(password), role: "owner" } },
-    },
-  });
-  await createDefaultWorkflows(gym.id);
+  // Gym, owner login and starter workflows are saved together, so a failure
+  // part way never leaves a half-made gym behind.
+  let gym;
+  try {
+    gym = await base.$transaction(async (tx) => {
+      const gym = await tx.gym.create({
+        data: {
+          name,
+          phone: BigInt(phone),
+          users: { create: { name: ownerName, phone: BigInt(phone), passwordHash: hashPassword(password), role: "owner" } },
+        },
+      });
+      await tx.whatsappWorkflow.createMany({ data: DEFAULTS.map((workflow) => ({ ...workflow, gym_id: gym.id })) });
+      return gym;
+    });
+  } catch (error) {
+    // The same phone was registered at the same moment.
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return Response.json({ error: "That phone number already has a login on this cluster" }, { status: 409 });
+    }
+    throw error;
+  }
   return Response.json({ id: gym.id, name: gym.name }, { status: 201 });
 }

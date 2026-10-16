@@ -135,7 +135,7 @@ function BiometricManagement() {
                 <TabsList className='flex-wrap'>
                     <TabsTrigger value='enroll'>Add Biometric</TabsTrigger>
                     <TabsTrigger value='block'>Block Biometric</TabsTrigger>
-                    <TabsTrigger value='delete'>Delete Biometric</TabsTrigger>
+                    {isOwner && <TabsTrigger value='delete'>Delete Biometric</TabsTrigger>}
                     <TabsTrigger value='link'>Link IDs {unlinked.length > 0 && `(${unlinked.length})`}</TabsTrigger>
                     <TabsTrigger value='commands'>View Commands</TabsTrigger>
                     {isOwner && <TabsTrigger value='machines'>Machine Setup</TabsTrigger>}
@@ -159,13 +159,15 @@ function BiometricManagement() {
                             <Button disabled={!pickStaff} onClick={() => enrollStaff(pickStaff)}>Enroll</Button>
                         </CardContent>
                     </Card>
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Machine already has people on it?</CardTitle>
-                            <CardDescription>Ask the machine for its list. Their names then appear under Link IDs, so you can match each one to a member once.</CardDescription>
-                        </CardHeader>
-                        <CardContent><Button variant='outline' onClick={() => run(() => call(RequestMachineUserList()), 'Asked the machine for its list')}>Get people from machine</Button></CardContent>
-                    </Card>
+                    {isOwner && (
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Machine already has people on it?</CardTitle>
+                                <CardDescription>Ask the machine for its list. Their names then appear under Link IDs, so you can match each one to a member once.</CardDescription>
+                            </CardHeader>
+                            <CardContent><Button variant='outline' onClick={() => run(() => call(RequestMachineUserList()), 'Asked the machine for its list')}>Get people from machine</Button></CardContent>
+                        </Card>
+                    )}
                 </TabsContent>
 
                 <TabsContent value='block' className='space-y-4 pt-4'>

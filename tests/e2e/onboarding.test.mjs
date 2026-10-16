@@ -98,6 +98,17 @@ await step("importing the same file again skips existing members", async () => {
   await page.getByRole("button", { name: "Import 1 member" }).click();
   await page.getByText("Already a member").waitFor({ timeout: 20000 });
 });
+await step("a CSV keeps dd-mm-yyyy dates and reads amounts typed with ₹ and commas", async () => {
+  await page.goto(`${BASE}/members/import`);
+  // 05-01-2026 is 5 January; read as a US date it would be 1 May.
+  const csv = "Name,Phone,Plan,Start Date,Paid\ncsv dates,9876544407,Quarterly,05-01-2026,\"₹2,000\"\n";
+  await page.locator("input[type=file]").setInputFiles({ name: "dates.csv", mimeType: "text/csv", buffer: Buffer.from(csv) });
+  await page.getByRole("button", { name: "Import 1 member" }).click();
+  await page.getByText("1 imported, 1 with a running package").waitFor({ timeout: 20000 });
+  await page.goto(`${BASE}/members`); await page.locator("tr", { hasText: "Csv Dates" }).getByText("Csv Dates").click();
+  await page.getByText("05-01-2026 to 05-04-2026").waitFor();
+  await page.getByText("Paid ₹2,000").waitFor();
+});
 await step("an owner who skips setup sees the reminder on the dashboard", async () => {
   await signIn(page, "9811111111", "password-1111");
   await page.getByText("Finish setting up your gym").waitFor();

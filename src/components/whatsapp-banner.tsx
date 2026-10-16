@@ -1,6 +1,6 @@
 'use client'
 import { GetSessionInfo } from "@/action/staff.action"
-import { GetWhatsappConnection } from "@/action/whatsapp.action"
+import { GetWhatsappStatus } from "@/action/whatsapp.action"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { useEffect, useState } from "react"
@@ -14,7 +14,7 @@ export function WhatsappBanner() {
     ;(async () => {
       const session = await GetSessionInfo()
       if (!session || session.role === "staff") return
-      const connection = await GetWhatsappConnection().catch(() => null)
+      const connection = await GetWhatsappStatus().catch(() => null)
       // A sleeping sender reports "offline"; only a missing link is worth a banner.
       if (!cancelled && connection?.state === "qr") setShow(true)
     })()

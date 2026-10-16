@@ -3,6 +3,7 @@
 import { Failed } from '@/lib/action-result';
 import { UserError, safe } from '@/lib/safe-action';
 import prisma from '@/lib/tenant';
+import { Prisma } from '@prisma/client';
 import { format, parse, isValid, isToday } from 'date-fns';
 import { membershipStatus } from '@/lib/membership';
 
@@ -63,12 +64,21 @@ export async function AddAttendance(data: AttendanceInput): Promise<AttendanceRe
         return existingAttendance;
       }
 
+      // The check above can race with a machine punch or a second tap; the
+      // database allows one check-in per member per day, so a clash simply
+      // returns the check-in that won.
       const attendance = await prisma.attendance.create({
         data: {
           member_id: data.member_id,
           date: data.date,
           time: data.time,
         },
+      }).catch(async (error) => {
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+          const existing = await prisma.attendance.findFirst({ where: { member_id: data.member_id, date: data.date } });
+          if (existing) return existing;
+        }
+        throw error;
       });
 
       return {

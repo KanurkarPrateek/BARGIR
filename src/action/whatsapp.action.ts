@@ -59,8 +59,18 @@ export interface MessageResponse {
 
 // ---------- Connection ----------
 
+// Owner only: carries the QR code that would link any phone to the gym's
+// WhatsApp.
 export async function GetWhatsappConnection(): Promise<Connection> {
+  await requireOwner();
   return getConnection(await requireGymId());
+}
+
+// Just whether WhatsApp is linked, for banners any login may see. No QR code
+// or number.
+export async function GetWhatsappStatus(): Promise<Pick<Connection, "state">> {
+  const { state } = await getConnection(await requireGymId());
+  return { state };
 }
 
 // Unlinks the gym's WhatsApp number so a different one can be scanned.
@@ -80,6 +90,7 @@ export async function SendTestMessage(phone: string, message: string) {
 // ---------- Workflows ----------
 
 export async function GetWorkflows(): Promise<WorkflowResponse[]> {
+  await requireOwner();
   const workflows = await prisma.whatsappWorkflow.findMany({
     orderBy: { createdAt: "asc" },
     include: { _count: { select: { messages: { where: { status: "sent" } } } } },
@@ -133,6 +144,7 @@ export async function RunWorkflowsNow(): Promise<number> {
 // ---------- Offers / broadcasts ----------
 
 export async function GetAudienceSize(audience: CampaignAudience): Promise<number> {
+  await requireOwner();
   return (await getRecipients(audience)).length;
 }
 
@@ -177,6 +189,7 @@ export async function SendCampaign(data: {
 }
 
 export async function GetCampaigns(): Promise<CampaignResponse[]> {
+  await requireOwner();
   const [campaigns, grouped] = await Promise.all([
     prisma.whatsappCampaign.findMany({ orderBy: { createdAt: "desc" } }),
     prisma.whatsappMessage.groupBy({
@@ -189,7 +202,9 @@ export async function GetCampaigns(): Promise<CampaignResponse[]> {
   return campaigns.map((campaign) => {
     const counts = { pending: 0, sent: 0, failed: 0 };
     for (const row of grouped) {
-      if (row.campaign_id === campaign.id) counts[row.status] = row._count;
+      // A message the sender is busy with still counts as waiting.
+      const status = row.status === "sending" ? "pending" : row.status;
+      if (row.campaign_id === campaign.id) counts[status] += row._count;
     }
     return { ...campaign, counts };
   });
@@ -204,6 +219,7 @@ export interface GroupSettings {
 }
 
 export async function GetGroupSettings(): Promise<GroupSettings> {
+  await requireOwner();
   const gym = await base.gym.findUnique({ where: { id: await requireGymId() } });
   return { groupId: gym?.whatsappGroupId ?? null, groupName: gym?.whatsappGroupName ?? null, autoAdd: gym?.autoAddToGroup ?? false };
 }
@@ -243,6 +259,7 @@ export async function AddMemberToGroup(memberId: string): Promise<string | Faile
 // ---------- Message log ----------
 
 export async function GetMessages(): Promise<MessageResponse[]> {
+  await requireOwner();
   const messages = await prisma.whatsappMessage.findMany({
     orderBy: { createdAt: "desc" },
     take: 200,
@@ -257,7 +274,7 @@ export async function GetMessages(): Promise<MessageResponse[]> {
     phone: message.phone.toString(),
     body: message.body,
     document: message.document,
-    status: message.status,
+    status: message.status === "sending" ? "pending" : message.status,
     error: message.error,
     source: message.groupId ? "WhatsApp group" : message.workflow?.name ?? message.campaign?.title ?? "Manual",
     createdAt: message.createdAt,

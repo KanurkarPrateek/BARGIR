@@ -49,7 +49,7 @@ const Invoice = ({ ref, sale_id }: { ref: any, sale_id: string }) => {
     const [sale, setSale] = React.useState<ExpandedSalesResponse & { gym: Gym; payments: { date: string; mode: string; amount: number }[] }>()
     const [missing, setMissing] = React.useState(false)
     useEffect(() => {
-        GetSaleWithExpand(sale_id).then((found) => found ? setSale(found) : setMissing(true))
+        GetSaleWithExpand(sale_id).then((found) => found ? setSale(found) : setMissing(true)).catch(() => setMissing(true))
     }, [sale_id])
 
     const gym = sale?.gym

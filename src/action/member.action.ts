@@ -18,6 +18,7 @@ import { SalesResponse } from "./sales.action";
 import { notifyTrainerOfMember } from "@/lib/whatsapp/staff";
 import { requireIndianMobile } from "@/lib/phone";
 import { constants } from "buffer";
+import { Prisma } from "@prisma/client";
 // import { Gender } from '@prisma/client';
 type Gender = "male" | "female" | "other";
 // Type definitions
@@ -60,6 +61,8 @@ const validateDateFormat = (dateStr: string): boolean => {
 
 
 // 1. AddMember
+// Codes only need to be unique within the gym; `prisma` here is the gym's
+// own client, so this looks only at this gym's members.
 async function generateUniqueMemberCode(): Promise<string> {
   let memberCode: string;
   let isUnique = false;
@@ -73,7 +76,7 @@ async function generateUniqueMemberCode(): Promise<string> {
     memberCode = `MEM${randomNum.toString().padStart(7, "0")}`;
 
     // Check if the code already exists
-    const existingMember = await prisma.member.findUnique({
+    const existingMember = await prisma.member.findFirst({
       where: { memberCode },
     });
 
@@ -109,23 +112,35 @@ export async function AddMember(data: MemberInput): Promise<MemberResponse | Fai
 
       await requireOwnTrainer(data.trainer_id);
 
-      // Generate unique member code
-      const memberCode = await generateUniqueMemberCode();
-
-      const member = await prisma.member.create({
-        data: {
-          name: data.name,
-          email: data.email,
-          memberCode, // Use the generated code
-          phone,
-          address: data.address,
-          DOB: data.DOB,
-          gender: data.gender,
-          DOJ: data.DOJ,
-          trainer_id: data.trainer_id || null,
-          batch_id: data.batch_id || null,
-        },
-      });
+      // Two saves at the same moment can pick the same free code; the second
+      // one then just tries again with a new code.
+      let member;
+      for (let attempt = 1; ; attempt++) {
+        try {
+          member = await prisma.member.create({
+            data: {
+              name: data.name,
+              email: data.email,
+              memberCode: await generateUniqueMemberCode(),
+              phone,
+              address: data.address,
+              DOB: data.DOB,
+              gender: data.gender,
+              DOJ: data.DOJ,
+              trainer_id: data.trainer_id || null,
+              batch_id: data.batch_id || null,
+            },
+          });
+          break;
+        } catch (error) {
+          const codeTaken =
+            error instanceof Prisma.PrismaClientKnownRequestError &&
+            error.code === "P2002" &&
+            String(error.meta?.target ?? "").includes("memberCode");
+          if (codeTaken && attempt < 5) continue;
+          throw error;
+        }
+      }
 
       if (data.enquiry_id) {
         await prisma.enquiry.update({
@@ -236,8 +251,9 @@ export async function UpdateMemberById(
         throw new UserError("Invalid DOJ format. Use dd-MM-yyyy");
       }
 
+      // Checked within this gym only (the gym's own client).
       if (data.memberCode) {
-        const existingMember = await prisma.member.findUnique({
+        const existingMember = await prisma.member.findFirst({
           where: { memberCode: data.memberCode },
         });
         if (existingMember && existingMember.id !== id) {
@@ -257,6 +273,12 @@ export async function UpdateMemberById(
           gender: data.gender,
           DOJ: data.DOJ,
         },
+      }).catch((error) => {
+        // Someone else took the code between the check above and this save.
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+          throw new UserError("Member code already exists");
+        }
+        throw error;
       });
 
       return {

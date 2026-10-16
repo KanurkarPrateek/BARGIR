@@ -33,7 +33,17 @@ await step("front-desk work still works: add an enquiry and check a member in", 
   await choose(page, "Select Member", "Old Expired");
   await page.getByRole("button", { name: "Check In" }).click(); await toast(page, "Attendance added successfully");
 });
-await step("owner removes the login; the staff member can no longer sign in", async () => {
+await step("deleting enquiries and machine setup are owner-only", async () => {
+  await page.goto(`${BASE}/enquiries`);
+  await page.getByText("desk lead").first().waitFor(); await page.waitForTimeout(1000);
+  if (await page.getByRole("button", { name: "Delete" }).count()) throw new Error("enquiry Delete visible");
+  await page.goto(`${BASE}/attendance/biometric`);
+  await page.getByRole("tab", { name: "Block Biometric" }).waitFor(); await page.waitForTimeout(1000);
+  for (const name of ["Delete Biometric", "Machine Setup"]) {
+    if (await page.getByRole("tab", { name }).count()) throw new Error(`${name} visible`);
+  }
+});
+await step("owner removes the login;the staff member can no longer sign in", async () => {
   await signIn(page, "9811111111", "password-1111"); await page.waitForURL(/dashboard/);
   await page.goto(`${BASE}/staff`);
   await page.locator("div.rounded-lg.border", { hasText: "Sita Front" }).getByRole("button", { name: "Remove login" }).click();

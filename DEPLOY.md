@@ -17,7 +17,8 @@ long random text works (for example the output of `openssl rand -hex 32`):
 
 ## 1. Supabase (database)
 
-1. Create a project at supabase.com. Pick a region near India (Mumbai or Singapore).
+1. Create a project at supabase.com. Pick a region near India (Mumbai or Singapore), and
+   set Vercel's function region (`vercel.json`) to the same place.
 2. Open **Connect** and copy two connection strings:
    - **Transaction pooler** (port 6543). Add `?pgbouncer=true&connection_limit=1` to the end.
      This is `DATABASE_URL` for Vercel.
@@ -43,8 +44,11 @@ The tables are created automatically on the first Vercel deploy.
    | `WHATSAPP_WORKER_KEY` | your second secret |
    | `CRON_SECRET` | your third secret |
    | `WHATSAPP_WORKER_URL` | leave empty for now; filled in step 4 |
-   | `ALLOW_SIGNUP` | optional: `false` to stop gyms signing themselves up at `/signup` |
+   | `ALLOW_SIGNUP` | `false` in production, so only you (Control Panel) create gyms |
 
+   Set the database variables for **Production only**, not Preview: every build
+   updates the database tables, so a preview build of another branch would change
+   the live database.
 3. Deploy. Vercel runs `vercel-build`, which creates the database tables and builds the app.
 4. Open `https://<your-app>.vercel.app/signin` and sign in with the admin login.
 
@@ -117,6 +121,35 @@ To try it without a machine: `npm run simulate:biometric -- --server https://<ad
   database limit.
 - **WhatsApp:** linking by QR is unofficial. Sending many messages quickly can get a
   number restricted by WhatsApp; the sender waits 3–6 seconds between messages for this reason.
+
+## Backups
+
+`.github/workflows/backup.yml` runs every night at 02:00 India time. It dumps each
+live database, encrypts it, and keeps it for 30 days as a download on the
+**Actions → Backup** run. Add these repository secrets once (Settings → Secrets and
+variables → Actions): `BACKUP_PASSPHRASE` (keep a copy in your password manager:
+without it the backups cannot be opened), `BACKUP_DB_CLUSTER_1` and
+`BACKUP_DB_CONTROL` (each database's session pooler string, port 5432). Run it by
+hand once from the Actions tab to check it works. Each new cluster gets a secret
+`BACKUP_DB_CLUSTER_<n>` and a line in the workflow's `db:` list.
+
+To restore: download the file from the run, then
+
+```bash
+gpg -d -o db.dump backup-CLUSTER_1-<date>.dump.gpg          # asks for the passphrase
+docker run --rm -v "$PWD":/b postgres:17 pg_restore --clean --if-exists --no-owner \
+  --no-privileges -d "<session pooler string>" /b/db.dump
+```
+
+Restore into a new Supabase project first if you only need to look something up.
+
+## Changing the database tables
+
+Every deploy runs `prisma db push`. Adding tables, columns with defaults, and
+indexes goes through by itself. A change Prisma flags as risky (a new unique rule,
+a removed or renamed column) stops the build instead of touching data: apply it by
+hand first with `npx prisma db push --accept-data-loss` against `DIRECT_URL`, after
+checking the warning and taking a backup, then deploy.
 
 ## Running it locally
 

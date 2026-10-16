@@ -60,8 +60,12 @@ const TrainersPage = () => {
 
     const remove = async (trainer: TrainerResponse) => {
         if (!confirm(`Remove ${trainer.name}? Their members and enquiries will be left without a trainer.`)) return
-        await DeleteTrainer(trainer.id)
-        load()
+        try {
+            await call(DeleteTrainer(trainer.id))
+            load()
+        } catch (error: any) {
+            toast.error(error.message)
+        }
     }
 
     return (

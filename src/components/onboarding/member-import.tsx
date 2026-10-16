@@ -59,7 +59,13 @@ export function MemberImport({ onDone }: { onDone?: (result: ImportResult) => vo
 
     const read = async (file: File) => {
         try {
-            const book = XLSX.read(await file.arrayBuffer(), { cellDates: true })
+            // A CSV is plain text: read it as UTF-8 (keeps the ₹ sign) and keep every
+            // cell as typed, or SheetJS reads 10-01-2026 as the US date 1 October.
+            // The server reads dates as dd-mm-yyyy. Real date cells in Excel files
+            // still arrive as dates and are formatted in readRows.
+            const book = /\.csv$/i.test(file.name) || file.type === 'text/csv'
+                ? XLSX.read(await file.text(), { type: 'string', raw: true })
+                : XLSX.read(await file.arrayBuffer(), { cellDates: true })
             const parsed = readRows(book.Sheets[book.SheetNames[0]])
             if (parsed.length === 0) throw new Error('No members found. The first row must hold column titles like Name and Phone.')
             setRows(parsed); setFileName(file.name); setResult(null)
