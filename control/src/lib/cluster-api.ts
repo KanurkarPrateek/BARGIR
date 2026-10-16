@@ -66,6 +66,8 @@ export interface RemoteLogin {
   phone: string;
   role: "owner" | "staff";
   createdAt: string;
+  // Older clusters don't send it.
+  passwordStamp?: string;
 }
 export const gymLogins = async (c: ClusterRef, gymId: string) => (await request<{ logins: RemoteLogin[] }>(c, `/gyms/${gymId}/logins`)).logins;
 export const addGymLogin = (c: ClusterRef, gymId: string, login: { name: string; phone: string; role: string; password: string }) =>

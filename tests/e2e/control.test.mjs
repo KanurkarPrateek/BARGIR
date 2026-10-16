@@ -108,7 +108,18 @@ await step("Logins: add a reception login, which signs in without owner menus", 
   const role = await page.locator("tr", { hasText: "9811100077" }).locator("td").nth(2).textContent();
   if (role?.trim() !== "Reception") throw new Error(`role shows ${role}`);
   await signIn(page, "9811100077", "desk-pass-123"); await page.waitForURL(/dashboard/);
+  await page.getByText("Logout (Riya Desk)").waitFor();
   if (await page.getByRole("link", { name: "Gym Settings" }).count()) throw new Error("reception sees Gym Settings");
+});
+await step("Logins: passwords set here can be looked up later", async () => {
+  await controlSignIn(ADMIN.email, ADMIN.password); await page.waitForURL(CONTROL + "/");
+  await page.goto(gymUrl);
+  for (const [phone, password] of [["9811100099", "new-pass-12345"], ["9811100077", "desk-pass-123"]]) {
+    const row = page.locator("tr", { hasText: phone });
+    if ((await row.textContent())?.includes(password)) throw new Error("password shown before Show");
+    await row.getByRole("button", { name: "Show" }).click();
+    await row.getByText(password, { exact: true }).waitFor();
+  }
 });
 await step("Logins: the only owner cannot be removed; a removed login cannot sign in", async () => {
   await controlSignIn(ADMIN.email, ADMIN.password); await page.waitForURL(CONTROL + "/");

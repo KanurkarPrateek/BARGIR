@@ -4,6 +4,7 @@
 import base from "@/lib/prisma";
 import { normalizeIndianMobile } from "@/lib/phone";
 import { format } from "date-fns";
+import { createHash } from "crypto";
 
 export type LoginRole = "owner" | "staff";
 
@@ -13,6 +14,9 @@ export interface PlatformLogin {
   phone: string;
   role: LoginRole;
   createdAt: string;
+  // Changes whenever the password changes (also when the person changes it in
+  // the app), so the Control Panel knows whether the password it saved is current.
+  passwordStamp: string;
 }
 
 export class LoginError extends Error {
@@ -21,9 +25,11 @@ export class LoginError extends Error {
   }
 }
 
+export const passwordStamp = (passwordHash: string) => createHash("sha256").update(`stamp:${passwordHash}`).digest("hex").slice(0, 16);
+
 export async function listLogins(gymId: string): Promise<PlatformLogin[]> {
   const users = await base.user.findMany({ where: { gym_id: gymId }, orderBy: [{ role: "asc" }, { createdAt: "asc" }] });
-  return users.map((u) => ({ id: u.id, name: u.name, phone: u.phone.toString(), role: u.role as LoginRole, createdAt: u.createdAt.toISOString() }));
+  return users.map((u) => ({ id: u.id, name: u.name, phone: u.phone.toString(), role: u.role as LoginRole, createdAt: u.createdAt.toISOString(), passwordStamp: passwordStamp(u.passwordHash) }));
 }
 
 export function readRole(value: unknown): LoginRole {

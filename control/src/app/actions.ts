@@ -176,6 +176,7 @@ export async function createGym(form: FormData) {
     },
   });
   if (!remoteId) {
+    await rememberPassword({ id: gym.id, remoteId: id!, cluster }, { phone: ownerPhone }, password);
     // Shown once on the gym page so the login can be copied; gone after 10 minutes.
     (await cookies()).set(`new_login_${gym.id}`, password, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: `/gyms/${gym.id}`, maxAge: 600 });
   }
@@ -236,6 +237,7 @@ export async function resetOwnerPassword(form: FormData) {
   } catch (e) {
     back(`/gyms/${id}`, errorText(e));
   }
+  await rememberPassword({ id: gym.id, remoteId: gym.remoteId, cluster: gym.cluster }, { phone: gym.ownerPhone }, password);
   back(`/gyms/${id}`, `Owner password changed to ${password}. Send it to the owner.`, "ok");
 }
 
@@ -247,6 +249,23 @@ async function linkedGym(id: string) {
   const gym = await db.gymAccount.findUnique({ where: { id }, include: { cluster: true } });
   if (!gym?.remoteId) back(`/gyms/${id}`, "This gym is not linked to its cluster");
   return gym as typeof gym & { remoteId: string };
+}
+
+// Keeps the password just set, encrypted, so it can be looked up on the gym
+// page later. Best effort: the login itself is already saved on the cluster.
+async function rememberPassword(gym: { id: string; remoteId: string; cluster: Parameters<typeof gymLogins>[0] }, match: { userId?: string; phone?: string }, password: string) {
+  try {
+    const login = (await gymLogins(gym.cluster, gym.remoteId)).find((l) => (match.userId ? l.id === match.userId : l.phone === match.phone));
+    if (!login) return;
+    const data = { passwordEncrypted: encrypt(password), passwordStamp: login.passwordStamp ?? null };
+    await db.loginPassword.upsert({
+      where: { gym_id_remoteUserId: { gym_id: gym.id, remoteUserId: login.id } },
+      create: { gym_id: gym.id, remoteUserId: login.id, ...data },
+      update: data,
+    });
+  } catch (e) {
+    console.error("could not keep the login's password:", e);
+  }
 }
 
 // Shows the login just made or changed once on the gym page, to copy and send.
@@ -266,11 +285,13 @@ export async function addLogin(form: FormData) {
   if (!name) back(path, "Enter the person's name");
   if (!phone) back(path, "Mobile must be a 10-digit Indian number");
   if (password.length < 8) back(path, "Password needs at least 8 characters");
+  let userId = "";
   try {
-    await addGymLogin(gym.cluster, gym.remoteId, { name, phone, role, password });
+    userId = (await addGymLogin(gym.cluster, gym.remoteId, { name, phone, role, password })).id;
   } catch (e) {
     back(path, errorText(e));
   }
+  await rememberPassword(gym, { userId }, password);
   await showLogin(gym.id, gym.cluster.appUrl, { name, phone, role }, password);
   back(path, `${ROLE_LABEL[role]} login added for ${name}`, "ok");
 }
@@ -303,7 +324,10 @@ export async function updateLogin(form: FormData) {
   if (before.role === "owner" && role === "owner" && before.phone === gym.ownerPhone && phone !== gym.ownerPhone) {
     await db.gymAccount.update({ where: { id: gym.id }, data: { ownerPhone: phone, ownerName: name } });
   }
-  if (password) await showLogin(gym.id, gym.cluster.appUrl, { name, phone, role }, password);
+  if (password) {
+    await rememberPassword(gym, { userId }, password);
+    await showLogin(gym.id, gym.cluster.appUrl, { name, phone, role }, password);
+  }
   back(path, password ? `Login for ${name} saved with the new password; they are signed out on other devices` : `Login for ${name} saved`, "ok");
 }
 
@@ -316,6 +340,7 @@ export async function removeLogin(form: FormData) {
   } catch (e) {
     back(path, errorText(e));
   }
+  await db.loginPassword.deleteMany({ where: { gym_id: gym.id, remoteUserId: text(form, "user_id") } });
   back(path, "Login removed; that person can no longer sign in", "ok");
 }
 

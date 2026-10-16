@@ -90,6 +90,7 @@ model GymAccount {
   notes             String?
   createdAt         DateTime   @default(now())
   payments          Payment[]
+  loginPasswords    LoginPassword[]
 
   @@unique([cluster_id, remoteId])
 }
@@ -118,4 +119,20 @@ model Payout {
   date      DateTime
   note      String?
   createdAt DateTime @default(now())
+}
+
+// The last password set from the Control Panel for one of a gym's logins,
+// encrypted with CONTROL_SECRET, so an admin can look it up later. The cluster
+// keeps only a hash; passwordStamp tells whether the person has since changed it.
+model LoginPassword {
+  id                String     @id @default(uuid())
+  gym_id            String
+  gym               GymAccount @relation(fields: [gym_id], references: [id], onDelete: Cascade)
+  // The login's user id on the cluster.
+  remoteUserId      String
+  passwordEncrypted String
+  passwordStamp     String?
+  updatedAt         DateTime   @updatedAt
+
+  @@unique([gym_id, remoteUserId])
 }

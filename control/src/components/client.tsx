@@ -15,3 +15,15 @@ export function CopyButton({ text, label = "Copy" }: { text: string; label?: str
     </button>
   );
 }
+
+// A saved password: hidden until "Show" is pressed, copyable either way.
+export function SecretText({ value }: { value: string }) {
+  const [shown, setShown] = useState(false);
+  return (
+    <span className="inline-flex items-center gap-2">
+      <span className="font-mono tabular-nums">{shown ? value : "••••••••"}</span>
+      <button type="button" className="text-xs underline" onClick={() => setShown(!shown)}>{shown ? "Hide" : "Show"}</button>
+      <CopyButton text={value} />
+    </span>
+  );
+}

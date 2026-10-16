@@ -3,12 +3,12 @@ import { notFound } from "next/navigation";
 import { cookies } from "next/headers";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { newPassword as generatePassword } from "@/lib/crypto";
+import { decrypt, newPassword as generatePassword } from "@/lib/crypto";
 import { clusterGyms, gymLogins, type RemoteGym, type RemoteLogin } from "@/lib/cluster-api";
 import { day, inputDate, nextRenewal, planLabel, PLANS, renewalState, rupees } from "@/lib/business";
 import { addLogin, deleteGymRecord, deletePayment, recordPayment, removeLogin, setGymStatus, updateGym, updateLogin } from "../../../actions";
 import { Badge, btn, btnDanger, btnOutline, Card, Field, Notice, PageTitle, Stat } from "@/components/ui";
-import { ConfirmButton, CopyButton } from "@/components/client";
+import { ConfirmButton, CopyButton, SecretText } from "@/components/client";
 
 export default async function GymPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ error?: string; ok?: string }> }) {
   const [{ id }, notice, user] = await Promise.all([params, searchParams, requireUser()]);
@@ -27,9 +27,16 @@ export default async function GymPage({ params, searchParams }: { params: Promis
   const newPassword = admin ? cookieStore.get(`new_login_${gym.id}`)?.value : undefined;
   const loginNote = admin ? cookieStore.get(`login_note_${gym.id}`)?.value : undefined;
   let logins: RemoteLogin[] | undefined, loginsError: string | undefined;
+  const passwords = new Map<string, { password: string | null; current: boolean }>();
   if (admin && remote) {
     try {
       logins = await gymLogins(gym.cluster, remote.id);
+      for (const saved of await db.loginPassword.findMany({ where: { gym_id: gym.id } })) {
+        const login = logins.find((l) => l.id === saved.remoteUserId);
+        let password: string | null = null;
+        try { password = decrypt(saved.passwordEncrypted); } catch { /* CONTROL_SECRET changed */ }
+        passwords.set(saved.remoteUserId, { password, current: !login?.passwordStamp || !saved.passwordStamp || login.passwordStamp === saved.passwordStamp });
+      }
     } catch (e) {
       loginsError = e instanceof Error ? e.message : "Cluster unreachable";
     }
@@ -115,7 +122,7 @@ export default async function GymPage({ params, searchParams }: { params: Promis
       )}
 
       {admin && (
-        <Card title="Logins" description="Who can sign in to this gym. Owner: everything. Reception: members, enquiries, attendance and sales, but no money reports, expenses, staff or settings. A changed password, role or removed login signs that person out within a minute.">
+        <Card title="Logins" description="Who can sign in to this gym. Owner: everything. Reception: members, enquiries, attendance and sales, but no money reports, expenses, staff or settings. A changed password, role or removed login signs that person out within a minute. Passwords set here are kept (encrypted) so you can look them up.">
           {loginNote && (
             <div className="mb-4 rounded-md border border-emerald-300 bg-emerald-50 p-3 dark:border-emerald-800 dark:bg-emerald-950">
               <p className="mb-2 text-sm font-medium">Send this login now. It is shown only for the next few minutes.</p>
@@ -126,13 +133,18 @@ export default async function GymPage({ params, searchParams }: { params: Promis
           {!logins ? <p className="text-sm text-amber-700 dark:text-amber-400">{loginsError ?? remoteError ?? "Not linked to a gym on the cluster."}</p> : (
             <div className="space-y-5">
               <table>
-                <thead><tr><th>Name</th><th>Mobile</th><th>Role</th><th></th></tr></thead>
+                <thead><tr><th>Name</th><th>Mobile</th><th>Role</th><th>Password</th><th></th></tr></thead>
                 <tbody>
                   {logins.map((l) => (
                     <tr key={l.id}>
                       <td>{l.name}</td>
                       <td className="tabular-nums">{l.phone}</td>
                       <td><Badge tone={l.role === "owner" ? "green" : "blue"}>{l.role === "owner" ? "Owner" : "Reception"}</Badge></td>
+                      <td>{(() => {
+                        const saved = passwords.get(l.id);
+                        if (saved?.password && saved.current) return <SecretText value={saved.password} />;
+                        return <span className="text-xs text-stone-500">{saved?.password ? "They changed it in the app. Set a new one with Change to see it." : "Not known: set before passwords were kept here. Set a new one with Change to see it."}</span>;
+                      })()}</td>
                       <td className="text-right">
                         <details className="inline-block text-left">
                           <summary className="cursor-pointer text-sm underline">Change</summary>
