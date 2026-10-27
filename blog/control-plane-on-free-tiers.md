@@ -1,12 +1,12 @@
-# I run a gym SaaS on ₹0/month of compute. Here's the control plane that makes it work.
+# I host gym software for my friends' gyms on ₹0/month. Here's the control plane that makes it work.
 
-*Bro, I'm not paying for servers until I have to.*
+*Bro, I'm not paying for servers for a side project.*
 
-I built gym management software: members, renewals, biometric attendance, WhatsApp reminders, invoices, the whole ERP. Then came the real question. **How do I host it for many gyms without paying for servers before the money comes in?**
+I built gym management software: members, renewals, biometric attendance, WhatsApp reminders, invoices, the whole ERP. Then came the real question. My friends run gyms and wanted to use it. **How do I host it for all of them without paying for servers?**
 
 My answer: free tiers. Lots of them. And one small app on top that manages them all. That app is the **control plane**. I call it the Control Panel.
 
-Right now **4 gym customers run on one cluster**, and it's working smooth. Hosting bill: zero.
+Right now **4 friends' gyms run on one cluster**, and it's working smooth. Hosting bill: zero.
 
 ---
 
@@ -24,19 +24,19 @@ That set of three is a **cluster**. When cluster-1 fills up, I make three new fr
 
 If you come from DevOps: think of each cluster as a node pool. The control plane is the scheduler and API server sitting on top.
 
-![How the Control Panel manages free clusters](images/00-architecture.jpg)
+![How the Control Panel manages free clusters](images/00-architecture-v2.jpg)
 
 ---
 
 ## What the Control Panel does
 
-It's a separate small Next.js app (`control/` in the repo) with its own free Vercel project and its own Supabase database. Gyms never see it. Only me and my sales team use it.
+It's a separate small Next.js app (`control/` in the repo) with its own free Vercel project and its own Supabase database. Gyms never see it. Only I use it.
 
-### 1. One screen for the whole business
+### 1. One screen for everything
 
 ![Control Panel dashboard](images/03-dashboard.jpg)
 
-Monthly recurring revenue, money collected this month, how many gyms, commission owed to the sales team, and **how much room is left on each cluster**. At 4 of 5 it already warns me: *"set up a new cluster before the next sale."* No surprise "out of capacity" moments.
+How many gyms are on, whose renewal is coming up, and the part I care about most: **how much room is left on each cluster**. At 4 of 5 it already warns me to set up a new cluster before adding the next gym. No surprise "out of capacity" moments. (The revenue and commission numbers in these screenshots are demo data.)
 
 ### 2. Clusters, with live health
 
@@ -68,7 +68,7 @@ Every secret is stored **encrypted** (AES-256-GCM, keyed on one `CONTROL_SECRET`
 
 ### 4. Onboarding a new gym: one form
 
-Sold a gym? Fill this in:
+Another friend wants in? Fill this in:
 
 ![New gym form](images/05-new-gym-form.jpg)
 
@@ -86,21 +86,17 @@ The owner opens the link, signs in, and lands in their own gym with a setup chec
 
 ![Owner's first login](images/07-owner-first-login.jpg)
 
-From "deal closed" to "owner is inside the software": **under a minute.** No deploy, no new database, no config change.
+From "hey, can my gym use this?" to "owner is inside the software": **under a minute.** No deploy, no new database, no config change.
 
-### 5. Gyms, billing and the sales team
+### 5. All the gyms in one list
 
-All customers in one list, with plan, renewal date, who sold it, which cluster it's on, and live usage:
+Every gym with its owner, renewal date, which cluster it's on, and live usage:
 
 ![Gyms list](images/09-gyms.jpg)
 
-Salespeople get their own login. They see only the gyms they sold and their commission. Commission is booked automatically on every payment a gym makes:
+If I ever need to switch a gym off, it's one button: **Suspend**. Sign-in stops on the cluster right away. **Resume** brings it back.
 
-![Sales team and commission](images/10-sales-team.jpg)
-
-![Billing](images/11-billing.jpg)
-
-And when a gym stops paying: **Suspend**. Their sign-in is switched off on the cluster right away. They pay, I press **Resume**, they're back.
+(The panel also has billing and sales-team screens. I built them, but I don't need them for friends' gyms.)
 
 ---
 
@@ -138,11 +134,11 @@ And when a gym stops paying: **Suspend**. Their sign-in is switched off on the c
 
 ### Caveats, so nobody @'s me
 
-- **Vercel Hobby is for non-commercial use.** Once this is clearly a business, the Vercel side should move to Pro. The control plane makes that easy: it's per cluster.
+- **Vercel Hobby is for personal, non-commercial projects.** That's what this is: software for friends' gyms. If it ever turns into a paid product, the Vercel side moves to Pro, one cluster at a time.
 - **Render free has 512 MB of memory.** Each linked WhatsApp session uses some, so I watch memory as gyms are added. That's the real reason a cluster holds ~5 gyms.
 - **WhatsApp linking by QR is unofficial.** Sending too fast can get a number restricted, which is why the sender is slow on purpose.
 
-The lesson: you don't need Kubernetes or a VPS to start a SaaS. You need a cheap unit you can copy (one cluster), and a small control plane that makes copying it boring.
+The lesson: you don't need Kubernetes or a VPS to host real software for real people. You need a cheap unit you can copy (one cluster), and a small control plane that makes copying it boring.
 
 Ship it, bro. 💪
 
