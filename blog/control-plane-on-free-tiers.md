@@ -1,4 +1,4 @@
-# I host gym software for my friends' gyms on ₹0/month. Here's the control plane that makes it work.
+# I run a SaaS on ₹0/month of compute. Here's the control plane that makes it work.
 
 *Bro, I'm not paying for servers for a side project.*
 
