@@ -24,33 +24,7 @@ That set of three is a **cluster**. When cluster-1 fills up, I make three new fr
 
 If you come from DevOps: think of each cluster as a node pool. The control plane is the scheduler and API server sitting on top.
 
-```mermaid
-flowchart TB
-    subgraph CP["Control Panel (own Vercel + own Supabase)"]
-        UI["Dashboard · Gyms · Billing · Clusters · Sales team"]
-        DB[("gym_control DB<br/>clusters, gyms, payments,<br/>commission, encrypted secrets")]
-    end
-
-    subgraph C1["cluster-1 · 4 / 5 gyms"]
-        V1["Vercel app<br/>gym-cluster-1.vercel.app"]
-        S1[("Supabase Postgres")]
-        R1["Render WhatsApp sender"]
-        V1 --- S1
-        R1 --- S1
-        R1 -- "every 5 min: what's due?" --> V1
-    end
-
-    subgraph C2["cluster-2 (when cluster-1 is full)"]
-        V2["Vercel app"]
-        S2[("Supabase")]
-        R2["Render sender"]
-    end
-
-    UI -- "Bearer PLATFORM_API_KEY<br/>/api/platform/*" --> V1
-    UI -. "same API" .-> V2
-    Gyms["Gym owners & front desk"] --> V1
-    Bio["Biometric machines"] --> V1
-```
+![How the Control Panel manages free clusters](images/00-architecture.jpg)
 
 ---
 
